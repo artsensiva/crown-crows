@@ -18,7 +18,7 @@ OUTPUT=models/mobileclip2-s0/model.onnx
 VENV=${VENV:-.venv-export}
 
 mkdir -p models/mobileclip2-s0
-if ! echo "$WEIGHTS_SHA256  $WEIGHTS" | sha256sum -c --quiet 2>/dev/null; then
+if [ ! -f "$WEIGHTS" ] || ! echo "$WEIGHTS_SHA256  $WEIGHTS" | sha256sum -c --quiet >/dev/null 2>&1; then
     echo "Downloading MobileCLIP2-S0 weights (300 MB, revision $REVISION)"
     curl -L --fail -o "$WEIGHTS" \
         "https://huggingface.co/timm/MobileCLIP2-S0-OpenCLIP/resolve/$REVISION/open_clip_model.safetensors"
