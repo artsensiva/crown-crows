@@ -13,7 +13,7 @@ WorkingDirectory=%h/crown-crows
 Environment=PYTHONUNBUFFERED=1
 ExecStart=%h/crown-crows/.venv-detector/bin/python -B %h/crown-crows/detect.py \
   --model %h/crown-crows/models/mobileclip2-s0/model.onnx \
-  --model-sha256 81094a65bc3c98b461aa1a0d5ae0df977645b289ed85970482f9bdf83951c5d6 \
+  --model-sha256 9b92c15525131db8750a922ecc9f1c7a82383aa0f70af6bcc26193fb70b01949 \
   --accept 0.7 --servo full --servo-idle hold --dump-seconds 0.5 --ignore-seconds 25 \
   --cycles 0 --run-seconds 0 --warmup 60 --keep-batches 1000 \
   --log %h/crown-crows/logs/detect.jsonl

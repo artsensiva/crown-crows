@@ -29,14 +29,15 @@ def block_network():
 SCENARIOS = [
     ("crown cap in photo 1", ["crown-cap"] * 5, "YES"),
     ("plastic cap arrives in photo 3", ["empty", "empty", "plastic-cap", "plastic-cap", "plastic-cap"], "YES"),
-    ("cap at the tray edge", ["cap-edge"] * 5, "YES"),
+    ("light-blue cap", ["blue-cap"] * 5, "YES"),
     ("empty tray", ["empty"] * 5, "NO"),
     ("piece of paper", ["paper"] * 5, "NO"),
-    ("leaf", ["leaf"] * 5, "NO"),
+    ("feather", ["feather"] * 5, "NO"),
 ]
-# Tray photos from the bench unit, kept in selftest-photos/ so the test works
-# on any Pi; tray.json holds the tray area of these photos. See docs/DEPLOY.md.
-PHOTOS = {name: f"selftest-photos/{name}.jpg" for name in ("crown-cap", "plastic-cap", "cap-edge", "empty", "paper", "leaf")}
+# Unedited tray photos from the bench unit (grey card, 2026-10-15), kept in
+# selftest-photos/ so the test works on any Pi; tray.json holds the tray area
+# of these photos. See docs/DEPLOY.md.
+PHOTOS = {name: f"selftest-photos/{name}.jpg" for name in ("crown-cap", "plastic-cap", "blue-cap", "empty", "paper", "feather")}
 
 
 class NoLights:

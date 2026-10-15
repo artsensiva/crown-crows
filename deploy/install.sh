@@ -10,7 +10,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 ROOT=$PWD
 MODEL=models/mobileclip2-s0/model.onnx
-MODEL_SHA256=81094a65bc3c98b461aa1a0d5ae0df977645b289ed85970482f9bdf83951c5d6
+MODEL_SHA256=9b92c15525131db8750a922ecc9f1c7a82383aa0f70af6bcc26193fb70b01949
 CONFIG=/boot/firmware/config.txt
 REBOOT=no
 
@@ -75,7 +75,7 @@ fi
 systemctl --user stop crown-crows-detect 2>/dev/null || true
 selftest_output=$(.venv-detector/bin/python -B selftest.py 2>&1) || true
 if grep -q "^RESULT" <<< "$selftest_output"; then
-    grep -E "^(scenario|crown|plastic|cap|empty|piece|leaf|network|RESULT)" <<< "$selftest_output"
+    grep -E "^(scenario|crown|plastic|light|empty|piece|feather|network|RESULT)" <<< "$selftest_output"
 else
     echo "Self-test could not run (camera not connected, or enabled only after the reboot?); last lines:"
     tail -n 3 <<< "$selftest_output"

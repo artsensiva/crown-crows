@@ -47,3 +47,7 @@ Owner decisions:
 - no reference photo per visit;
 - no model download, training or image collection for now;
 - coins, washers or buttons need not be rejected.
+
+## 2026-10-15: Grey-card session
+
+A plain grey card as the tray floor, in dim light (worst case): the empty card scored 0.001, other objects at most 0.057, caps and lids mostly high but some low in the dim light ([RECOGNITION](RECOGNITION.md#grey-card-session-2026-10-15-dim-light-worst-case)). Owner decisions: "jar lid" joins the cap descriptions; the self-test photos come from this session. The threshold waits for better light.

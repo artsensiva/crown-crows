@@ -39,5 +39,5 @@ else
     "$VENV/bin/python" -B export_model.py --weights "$WEIGHTS" --sha256 "$WEIGHTS_SHA256" --output "$OUTPUT"
 fi
 sha256sum "$OUTPUT"
-echo "If the checksum differs from 81094a65...c5d6 (another PyTorch version), the scores are still identical:"
+echo "If the checksum differs from 9b92c155...1949 (another PyTorch version), the scores are still identical:"
 echo "pass the new checksum to the service with --model-sha256 (deploy/crown-crows-detect.service) and to install.sh."

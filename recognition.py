@@ -1,11 +1,11 @@
 """Zero-shot recognition of bottle caps and lids with MobileCLIP2-S0."""
 import json
 
-# Zero-shot labels. The first three count as a cap (their probabilities are
+# Zero-shot labels. The first four count as a cap (their probabilities are
 # summed into "cap_score"); the rest compete with them. Chosen on the
-# 2026-10-15 bench session (docs/RECOGNITION.md). Changing this list changes
+# 2026-10-15 bench sessions (docs/RECOGNITION.md). Changing this list changes
 # every score and requires re-exporting the model (deploy/build_model.sh).
-CAP_LABELS = ["bottle cap", "plastic bottle cap", "metal bottle cap"]
+CAP_LABELS = ["bottle cap", "plastic bottle cap", "metal bottle cap", "jar lid"]
 OTHER_LABELS = ["piece of paper", "lighter", "twig", "food", "stone", "dirt crumbs", "coin", "button",
                 "metal washer", "leaf", "empty tray"]
 LABELS = CAP_LABELS + OTHER_LABELS

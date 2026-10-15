@@ -89,7 +89,7 @@ Measured **on the Raspberry Pi 3**:
 | CPU while waiting for a crow | 0.2 % of one core |
 | Network use | none: the self-test blocks every network call |
 
-**Recognition of caps** (first bench session, 2026-10-15; 91 rounds of photos, not a held-out benchmark): drink caps scored a median **0.96**, and 93 % reached the 0.7 threshold. The bench's round floor inside a round tube looked like a cap to the model even when empty; the box therefore gets a plain grey rectangular tray, and the threshold is confirmed on it ([RECOGNITION](docs/RECOGNITION.md)).
+**Recognition of caps** (bench sessions, 2026-10-15; not a held-out benchmark): in good light drink caps scored a median **0.96**. The bench's round floor looked like a cap even when empty (up to 0.99); on a plain grey card the empty tray scores **0.001** and other objects at most **0.06**. In dim light some caps score lower, so better light comes before the final threshold ([RECOGNITION](docs/RECOGNITION.md)).
 
 ## Hardware
 
@@ -130,7 +130,7 @@ The planned housing (food on top, intake and ledge in the middle, waste below), 
 
 A deliberate constraint was **no custom training**: the system had to work with a ready-made model on a Raspberry Pi 3.
 
-1. **Zero-shot classification.** [MobileCLIP2-S0](https://huggingface.co/timm/MobileCLIP2-S0-OpenCLIP) compares a picture with text descriptions such as "a photo of a bottle cap", "a photo of a metal bottle cap" or "a photo of a leaf". The cap score is the probability of the three cap descriptions together.
+1. **Zero-shot classification.** [MobileCLIP2-S0](https://huggingface.co/timm/MobileCLIP2-S0-OpenCLIP) compares a picture with text descriptions such as "a photo of a bottle cap", "a photo of a jar lid" or "a photo of a leaf". The cap score is the probability of the four cap and lid descriptions together.
 2. **Edge deployment.** The image encoder and the precomputed description embeddings are exported into one ONNX graph, so the Pi needs neither PyTorch nor the text model: start-up drops from about **90 s to 1.5 s**, memory from **717 MB to about 170 MB**, with identical scores.
 3. **Fixed tray area.** The model rates the whole picture, so only the tray floor is shown to it, set once per unit.
 
