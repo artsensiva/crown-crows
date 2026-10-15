@@ -4,7 +4,7 @@
 
 **Mutual aid between birds, nature and people: crows help clean the city, and the city rewards them.**
 
-Crows are among the most intelligent animals and live wherever people drop litter. Crown Crows offers them a fair trade: bring a bottle cap or lid, get a small food reward. Every cap that goes into the box is one fewer in the gutter, the park or the river, and every reward is food earned rather than scavenged from waste. The device is meant to be cheap, autonomous, open and humane: it runs on a small battery-powered computer, needs no network, recognises caps with an off-the-shelf model, and puts the birds' well-being first.
+Crows are among the most intelligent animals and live wherever people drop litter. Crown Crows offers them a fair trade: bring a bottle cap or lid, get a small food reward. Every cap that goes into the box is one fewer in the gutter, the park or the river, and every reward is food earned rather than scavenged from waste. The device is meant to be cheap, autonomous, well documented and humane: it runs on a small battery-powered computer, needs no network, recognises caps with an off-the-shelf model, and puts the birds' well-being first.
 
 The name plays on the *crown cap* (German *Kronkorken*), the steel cap of beer and lemonade bottles, and on crowning the crows for a good deed: an invitation to people to honour the birds that help their city.
 
@@ -33,7 +33,7 @@ Remaining risks to watch: broken caps and loose sealing rings, sharp edges of be
 | Ruben van der Vleuten and Bob Spikman, *Crowbar* (Netherlands, 2017) | A machine concept that recognised deposited litter with a camera and released food | Design concept |
 | Christian Günther-Hanssen, *Corvid Cleaning* (Sweden, 2022) | A pilot in which wild crows deposit litter in a machine that rejects other objects and dispenses food | Pilot; not known to have scaled |
 
-**What Crown Crows adds:** a fully documented, open build on a Raspberry Pi 3; recognition that runs entirely on the device without network, cloud or custom training; measured timings and a self-test on the device; and an explicit focus on battery operation and bird welfare.
+**What Crown Crows adds:** a fully documented build on a Raspberry Pi 3; recognition that runs entirely on the device without network, cloud or custom training; measured timings and a self-test on the device; and an explicit focus on battery operation and bird welfare.
 
 ## What science says about crows trading
 
@@ -74,8 +74,8 @@ Each direction lists why it matters and a concrete first step. They are options,
 - Reference design for the housing, tray, food dispenser, sensors, materials and mounting, with its open questions: [MECHANICS](MECHANICS.md).
 - A tighter trigger zone for the PIR ([HARDWARE](HARDWARE.md#limiting-the-trigger-zone-to-about-35-cm)), or a distance sensor or infrared light barrier at the opening, which would also detect cold objects.
 
-### 8. Open hardware and citizen science
-- A reproducible kit with parts list and instructions, data sharing between boxes, and pilots with cities and their cleaning services.
+### 8. Kits, pilots and citizen science
+- A reproducible kit with parts list and instructions, data sharing between boxes, and pilots with cities and their cleaning services ([LICENSE](../LICENSE): permission on request).
 
 ## Principles
 

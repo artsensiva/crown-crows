@@ -1,0 +1,24 @@
+Crown Crows
+Copyright (c) 2026 Artem Galukhin. All rights reserved.
+
+This repository is published for viewing only. No licence is granted to use,
+copy, modify, build, install, run, distribute or sell this software, its
+mechanical designs, documentation or photographs, in whole or in part,
+except with the prior written permission of the copyright holder.
+
+Permission may be granted on request:
+- to private individuals, free of charge, under a written agreement;
+- to public authorities, companies and other organisations under a
+  separate commercial licence.
+
+Contact: artem.galukhin@gmail.com
+
+The rights GitHub's Terms of Service give to other users of a public
+repository (viewing it and forking it within GitHub) remain unaffected.
+
+Third-party components keep their own licences. In particular, the
+MobileCLIP2 model weights are not included in this repository; they are
+downloaded by deploy/build_model.sh and are licensed by Apple under the
+Apple Machine Learning Research Model licence (apple-amlr), which permits
+use for non-commercial research purposes only. The model file exported
+from them (model.onnx) is subject to the same licence.

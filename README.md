@@ -2,7 +2,7 @@
 
 **A self-contained Raspberry Pi system that invites crows to clean up bottle caps and lids, and rewards them with food.**
 
-**Mission: mutual aid between birds, nature and people.** Crows are clever enough to learn a trade: bring a bottle cap or lid, get a small food reward. Crown Crows is a cheap, open, battery-powered box that makes that trade fair and automatic, and puts the birds' well-being first. The name plays on the *crown cap* (German *Kronkorken*) and on crowning the crows for a good deed. Background, prior work and research directions: [MISSION](docs/MISSION.md).
+**Mission: mutual aid between birds, nature and people.** Crows are clever enough to learn a trade: bring a bottle cap or lid, get a small food reward. Crown Crows is a cheap, fully documented, battery-powered box that makes that trade fair and automatic, and puts the birds' well-being first. The name plays on the *crown cap* (German *Kronkorken*) and on crowning the crows for a good deed. Background, prior work and research directions: [MISSION](docs/MISSION.md).
 
 A crow drops an object into a small intake. A camera looks at it, an on-device vision model decides whether it is a bottle cap or lid, and a servo tips the tray one way or the other: a cap goes into a closed waste container **and the crow gets a food reward**; anything else goes into the container without a reward. Everything runs locally on a Raspberry Pi 3, with no network connection, no cloud service and no custom-trained model.
 
@@ -241,4 +241,6 @@ crown-crows/
 | [ROADMAP](docs/ROADMAP.md) | Next steps, open decisions, version 2 |
 | [HISTORY](docs/HISTORY.md) | Dated record of findings and decisions |
 
-**Licence:** not yet chosen; all rights reserved by the author. The MobileCLIP2 weights are under Apple's research licence (`apple-amlr`), which restricts their use; they are not redistributed here.
+**Licence:** all rights reserved ([LICENSE](LICENSE)). This repository is published for viewing; using, building or running the system requires written permission. Private individuals can get permission free of charge; public authorities and companies under a commercial licence. Contact: artem.galukhin@gmail.com.
+
+The MobileCLIP2 weights are not included: `build_model.sh` downloads them, and Apple's licence (`apple-amlr`) allows them, and the model exported from them, only for non-commercial research. A product for public authorities needs a recognition model under a business-friendly licence first ([ROADMAP](docs/ROADMAP.md)).
