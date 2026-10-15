@@ -29,7 +29,7 @@ echo "weights checksum OK"
 if [ ! -x "$VENV/bin/python" ]; then
     echo "Creating $VENV with CPU-only PyTorch and open_clip (only needed for this export)"
     python3 -m venv "$VENV"
-    "$VENV/bin/pip" install --quiet torch==2.14.1 --index-url https://download.pytorch.org/whl/cpu
+    "$VENV/bin/pip" install --quiet torch==2.14.1 torchvision==0.29.1 --index-url https://download.pytorch.org/whl/cpu
     "$VENV/bin/pip" install --quiet open_clip_torch==3.3.0 timm==1.0.30 onnx==1.23.2 onnxscript==0.7.2
 fi
 
