@@ -6,8 +6,10 @@ import json
 # 2026-10-15 bench sessions (docs/RECOGNITION.md). Changing this list changes
 # every score and requires re-exporting the model (deploy/build_model.sh).
 CAP_LABELS = ["bottle cap", "plastic bottle cap", "metal bottle cap", "jar lid"]
-OTHER_LABELS = ["piece of paper", "lighter", "twig", "food", "stone", "dirt crumbs", "coin", "button",
-                "metal washer", "leaf", "empty tray"]
+# Only things the box must reject compete with the caps. Look-alikes that may
+# be rewarded (coin, button, washer) are deliberately absent: as competitors
+# they took most of the vote from real caps seen from above.
+OTHER_LABELS = ["piece of paper", "lighter", "twig", "food", "stone", "dirt crumbs", "leaf", "empty tray"]
 LABELS = CAP_LABELS + OTHER_LABELS
 METADATA_KEY = "crown_crows_labels"
 

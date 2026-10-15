@@ -7,9 +7,11 @@
 | Group | Descriptions | Meaning |
 |---|---|---|
 | Caps and lids (summed into `cap_score`) | "bottle cap", "plastic bottle cap", "metal bottle cap", "jar lid" | Reward |
-| Everything else | "piece of paper", "lighter", "twig", "food", "stone", "dirt crumbs", "coin", "button", "metal washer", "leaf", "empty tray" | Compete with the cap descriptions |
+| Things to reject | "piece of paper", "lighter", "twig", "food", "stone", "dirt crumbs", "leaf", "empty tray" | Compete with the cap descriptions |
 
-Each description is used as "a photo of a …". A photo is YES when its `cap_score` reaches 0.7.
+Each description is used as "a photo of a …". A photo is YES when its `cap_score` reaches **0.6** (owner's choice).
+
+**How the descriptions compete:** the model shares 100 % among all descriptions, and only the cap group counts toward YES. Every other description is a competitor, not an extra way to pass. Descriptions are therefore listed only for things the box must reject (they give a stone, a leaf or an empty tray somewhere to go). Look-alikes that may be rewarded, such as coins, buttons and washers, are deliberately not listed: as competitors, "button" took most of the vote from caps seen from above (a white cap 0.04 with it, 0.99 without).
 
 - **Weights:** `timm/MobileCLIP2-S0-OpenCLIP`, revision `095906d28bf54d7584dc411e8ffe448f34289e05`, `open_clip_model.safetensors`, SHA-256 `ab91a1a0c4330d6b1913e24d5035dfdea15423316aaec649610c6b1c6ddd0e95`. Licensed under Apple's research licence (`apple-amlr`), which restricts their use; they are not part of this repository.
 - **Export:** `deploy/build_model.sh` downloads the weights and runs `export_model.py`, which writes one ONNX file (`model.onnx`, 46 MB) with the image encoder and the description embeddings built in, plus the description list in its metadata. On the Pi only onnxruntime is needed: the model is ready about 1.5 s after start, instead of about 90 s with PyTorch. The detector refuses a model file whose description list differs from `recognition.py`.
@@ -46,4 +48,19 @@ A plain grey card as the tray floor; the light at its limit (60 ms, highest gain
 - Scores are stable within a round; dim light lowers some objects consistently. The white cap scored 0.09, and the same crown cap 0.22 here against 0.87 in the brighter tube.
 - The square container lid (about 8 cm, 0.03–0.05) would be turned away by the intake slot anyway.
 
-**Open:** the threshold. At 0.7, 4 of 8 caps; at 0.2, 7 of 8, with every other object far below. Better light comes first ([LIGHTING](LIGHTING.md)), then the threshold is set on brighter photos.
+## Second grey-card session, 2026-10-15 (leaks sealed, reflectors; still dim)
+
+Light leaks sealed and white reflectors added: colours became neutral, brightness stayed about 52 of 255 (the light is still far from the card). 16 rounds: empty card, crown caps, white and blue caps, stone, leaf, twig, a small plant, a coin, the large container lid, paper.
+
+Both grey-card sessions together (14 caps, 6 lids, 10 other objects, the empty card), best score per round:
+
+| | With coin, button, washer listed | **Without them (current)** |
+|---|---|---|
+| Caps ≥ 0.6 | 9 of 14 | **14 of 14** (lowest 0.98) |
+| Lids ≥ 0.6 | 4 of 6 | **6 of 6** (lowest 0.81) |
+| Other objects | at most 0.06 | at most 0.11 |
+| Empty card | 0.00 | 0.00 |
+| Coin | 0.22 | 0.99 (rewarded; accepted by the owner) |
+| Large container lid (about 8 cm) | 0.01–0.05 | 0.01–0.05 (too large for the slot anyway) |
+
+Owner's decisions: coin, button and washer removed from the descriptions; threshold **0.6**. The sample is still small; the live test with the finished box will show more. Brighter light remains planned ([LIGHTING](LIGHTING.md)).

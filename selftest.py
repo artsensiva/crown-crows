@@ -53,7 +53,7 @@ def main():
     parser.add_argument("--root", type=Path, default=Path.home() / "crown-crows")
     parser.add_argument("--servo", action="store_true", help="Make the real servo strokes (mechanism must be clear)")
     parser.add_argument("--clear", action="store_true", help="Operator confirms the mechanism is clear (required with --servo)")
-    parser.add_argument("--accept", type=float, default=.7)
+    parser.add_argument("--accept", type=float, default=.6)
     options = parser.parse_args()
     if options.servo and not options.clear:
         parser.error("--servo needs --clear")

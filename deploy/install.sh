@@ -10,7 +10,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 ROOT=$PWD
 MODEL=models/mobileclip2-s0/model.onnx
-MODEL_SHA256=9b92c15525131db8750a922ecc9f1c7a82383aa0f70af6bcc26193fb70b01949
+MODEL_SHA256=1ac057e79ad7c3a4ad2fe99e2555b7e0ef63cc11e6992c45e4fb235eaa2224f8
 CONFIG=/boot/firmware/config.txt
 REBOOT=no
 

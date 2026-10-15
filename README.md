@@ -41,7 +41,7 @@ A crow drops an object into a small intake. A camera looks at it, an on-device v
  │ 1 s pause → light on → up to 5 photos, 1 s apart            │
  │ each photo is analysed in the background as soon as taken   │
  └─────────────────────────────────────────────────────────────┘
-      │ any photo scores ≥ 0.7 as "bottle cap"?
+      │ any photo scores ≥ 0.6 as "cap or lid"?
       ├── YES (stop at once) ──► servo 85° counter-clockwise:
       │                          tray into waste + food reward
       └── NO  (after 5 photos) ► servo 85° clockwise:
@@ -54,7 +54,7 @@ A crow drops an object into a small intake. A camera looks at it, an on-device v
 1. **Wake-up.** A passive-infrared (PIR) sensor aimed at the intake opening detects the crow's head. A PIR reacts only to warm moving bodies, so the camera, not the PIR, decides what was deposited.
 2. **Photos.** After a 1 s pause (the crow needs a moment to let go), the box's own light switches on and the camera takes up to five photos, one per second.
 3. **Pipelined recognition.** Each photo is analysed in a background thread while the next is being taken. Only the unit's fixed tray area is analysed.
-4. **Decision.** The first photo scoring at least **0.7** for "bottle cap" ends the sequence with **YES**. If none of the five does, the answer is **NO**.
+4. **Decision.** The first photo scoring at least **0.6** for "cap or lid" ends the sequence with **YES**. If none of the five does, the answer is **NO**.
 5. **Action.** The servo turns 85° to the reward side (YES) or the dump side (NO), holds 0.5 s, and returns to the centre, where it holds the tray until the next visit.
 6. **Record.** Every visit is logged with all photo scores, the decision, the timing and the servo stroke; the photos are kept up to a size limit.
 
@@ -89,7 +89,7 @@ Measured **on the Raspberry Pi 3**:
 | CPU while waiting for a crow | 0.2 % of one core |
 | Network use | none: the self-test blocks every network call |
 
-**Recognition of caps** (bench sessions, 2026-10-15; not a held-out benchmark): in good light drink caps scored a median **0.96**. The bench's round floor looked like a cap even when empty (up to 0.99); on a plain grey card the empty tray scores **0.001** and other objects at most **0.06**. In dim light some caps score lower, so better light comes before the final threshold ([RECOGNITION](docs/RECOGNITION.md)).
+**Recognition of caps** (bench sessions, 2026-10-15; not a held-out benchmark): in good light drink caps scored a median **0.96**. The bench's round floor looked like a cap even when empty (up to 0.99); on a plain grey card, with descriptions only for things the box must reject, all 14 caps and 6 lids tested scored at least **0.81**, other objects at most **0.11** and the empty tray **0.00**, even in dim light ([RECOGNITION](docs/RECOGNITION.md)).
 
 ## Hardware
 
@@ -190,7 +190,7 @@ cd ~/crown-crows && .venv-detector/bin/python -B selftest.py    # self-test (sto
 cd ~/crown-crows && python3 -B servo_bench.py --status          # servo state and calibration
 ```
 
-Production settings are in [`deploy/crown-crows-detect.service`](deploy/crown-crows-detect.service): `--accept 0.7 --servo full --dump-seconds 0.5 --ignore-seconds 25`; per-unit settings (servo positions, tray area) are in `config/`. The runtime needs four Python packages (onnxruntime, OpenCV headless, numpy, Pillow) plus the system's GPIO libraries. Visit photos are capped at the last 1000 visits (about 1.5 GB), logs rotate at 20 MB, the system log is capped at 50 MB.
+Production settings are in [`deploy/crown-crows-detect.service`](deploy/crown-crows-detect.service): `--accept 0.6 --servo full --dump-seconds 0.5 --ignore-seconds 25`; per-unit settings (servo positions, tray area) are in `config/`. The runtime needs four Python packages (onnxruntime, OpenCV headless, numpy, Pillow) plus the system's GPIO libraries. Visit photos are capped at the last 1000 visits (about 1.5 GB), logs rotate at 20 MB, the system log is capped at 50 MB.
 
 ## Repository layout
 

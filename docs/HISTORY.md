@@ -51,3 +51,7 @@ Owner decisions:
 ## 2026-10-15: Grey-card session
 
 A plain grey card as the tray floor, in dim light (worst case): the empty card scored 0.001, other objects at most 0.057, caps and lids mostly high but some low in the dim light ([RECOGNITION](RECOGNITION.md#grey-card-session-2026-10-15-dim-light-worst-case)). Owner decisions: "jar lid" joins the cap descriptions; the self-test photos come from this session. The threshold waits for better light.
+
+## 2026-10-15: Second grey-card session, descriptions and threshold
+
+Light leaks sealed, white reflectors added (colours neutral, still dim). With coin, button and washer listed as competitors, "button" took most of the vote from caps seen from above. Without them, all 14 caps and 6 lids of both sessions scored at least 0.81, other objects at most 0.11. Owner decisions: these three descriptions removed (a coin is now rewarded, which is acceptable), threshold 0.6 ([RECOGNITION](RECOGNITION.md#second-grey-card-session-2026-10-15-leaks-sealed-reflectors-still-dim)).

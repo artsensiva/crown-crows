@@ -341,7 +341,7 @@ def parse_options():
     parser.add_argument("--tray-file", type=Path, default=home / "config/local.tray.json",
                         help='Per-unit tray area, {"tray": [X0, Y0, X1, Y1]}, set once (docs/DEPLOY.md); '
                              "without it the whole photo is analysed")
-    parser.add_argument("--accept", type=float, default=.7, help="YES when a photo's cap_score reaches this")
+    parser.add_argument("--accept", type=float, default=.6, help="YES when a photo's cap_score reaches this")
     parser.add_argument("--threads", type=int, default=4)
     parser.add_argument("--output", type=Path, default=home / "captures")
     parser.add_argument("--log", type=Path, default=home / "logs/detect.jsonl")
