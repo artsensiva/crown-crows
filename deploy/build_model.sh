@@ -29,8 +29,8 @@ echo "weights checksum OK"
 if [ ! -x "$VENV/bin/python" ]; then
     echo "Creating $VENV with CPU-only PyTorch and open_clip (only needed for this export)"
     python3 -m venv "$VENV"
-    "$VENV/bin/pip" install --quiet torch --index-url https://download.pytorch.org/whl/cpu
-    "$VENV/bin/pip" install --quiet open_clip_torch==3.3.0 timm==1.0.30 onnx onnxscript
+    "$VENV/bin/pip" install --quiet torch==2.14.1 --index-url https://download.pytorch.org/whl/cpu
+    "$VENV/bin/pip" install --quiet open_clip_torch==3.3.0 timm==1.0.30 onnx==1.23.2 onnxscript==0.7.2
 fi
 
 if [ -f "$OUTPUT" ]; then
@@ -39,5 +39,5 @@ else
     "$VENV/bin/python" -B export_model.py --weights "$WEIGHTS" --sha256 "$WEIGHTS_SHA256" --output "$OUTPUT"
 fi
 sha256sum "$OUTPUT"
-echo "If the checksum differs from 1ac057e7...24f8 (another PyTorch version), the scores are still identical:"
+echo "With the pinned versions the checksum is 1ac057e7...24f8; if it differs (another platform), the scores are still identical:"
 echo "pass the new checksum to the service with --model-sha256 (deploy/crown-crows-detect.service) and to install.sh."

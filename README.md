@@ -158,23 +158,15 @@ The box is meant to run for days on a power bank, later with solar charging. The
 
 You need: a Raspberry Pi 3 Model B, a Raspberry Pi Camera Module V2, a PIR motion sensor (HC-SR501 type), an RGB LED module, a micro servo with its own 5–6 V supply, a microSD card (8 GB is enough), and a computer for the set-up (Linux or macOS).
 
-1. **Build the model on your computer** (downloads 300 MB of weights at a pinned revision, checks them, and exports the 46 MB ONNX model):
+1. **Prepare the Pi.** Write *Raspberry Pi OS Lite (64-bit)* (Debian 13) with Raspberry Pi Imager; set a user, Wi-Fi (for set-up only) and SSH. Wire the parts as in [HARDWARE](docs/HARDWARE.md) with all power off.
+2. **Install with one command** on your computer (replace `<user>` and `<pi>`):
    ```bash
    git clone https://github.com/artsensiva/crown-crows.git && cd crown-crows
-   bash deploy/build_model.sh
+   bash deploy/setup_pi.sh <user>@<pi>
    ```
-2. **Prepare the Pi.** Write *Raspberry Pi OS Lite (64-bit)* (Debian 13) with Raspberry Pi Imager; set a user, Wi-Fi (for set-up only) and SSH. Wire the parts as in [HARDWARE](docs/HARDWARE.md) with all power off.
-3. **Copy the project to the Pi** (replace `<user>` and `<pi>`):
-   ```bash
-   rsync -a --exclude .git --exclude '.venv*' --exclude captures --exclude logs --exclude config ./ <user>@<pi>:crown-crows/
-   ```
-4. **Install on the Pi** (asks for the Pi user's password), then reboot when it asks you to:
-   ```bash
-   cd ~/crown-crows && bash deploy/install.sh
-   ```
-   The installer also runs the **self-test**: the production logic with this Pi's camera on tray photos that ship with the repository, with the network blocked.
-5. **Set up your unit:** calibrate the servo with `servo_bench.py` ([SERVO](docs/SERVO.md#calibration-procedure)) and set the tray area ([DEPLOY](docs/DEPLOY.md)).
-6. **Test from a cold start without network** ([TESTING](docs/TESTING.md)).
+   It builds the model (downloads 300 MB of weights at a pinned revision, checks them, exports the 46 MB ONNX model), copies everything to the Pi and runs the installer there: system packages, Python environment, hardware PWM, permissions, persistent log, the service, and a **self-test** on tray photos that ship with the repository, with the network blocked. The Pi asks for its password only if a system step still needs it. Reboot when it asks you to. Add `--fresh` to rebuild everything on the Pi from scratch (calibration, photos and logs stay).
+3. **Set up your unit:** calibrate the servo with `servo_bench.py` ([SERVO](docs/SERVO.md#calibration-procedure)) and set the tray area ([DEPLOY](docs/DEPLOY.md)).
+4. **Test from a cold start without network** ([TESTING](docs/TESTING.md)).
 
 The author's own unit is installed exactly this way. **Updating** later is one command on your computer: `bash deploy/update_pi.sh <user>@<pi>` (calibration and data stay). Details and SD-card cloning: [DEPLOY](docs/DEPLOY.md).
 
@@ -208,6 +200,7 @@ crown-crows/
 │   ├── crown-crows-detect.service  systemd user service (production settings)
 │   ├── install.sh                  installer for a fresh Pi
 │   ├── build_model.sh              builds the model on a setup computer
+│   ├── setup_pi.sh                 installs on a Pi in one command (from the setup computer)
 │   ├── update_pi.sh                updates an installed Pi in one command
 │   └── requirements-runtime.txt    pinned runtime packages
 └── docs/                   design, measurements, history and operations

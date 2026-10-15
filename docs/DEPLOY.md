@@ -21,19 +21,13 @@ Production settings live in `deploy/crown-crows-detect.service`: `--accept 0.6 -
 
 1. **Operating system.** With Raspberry Pi Imager write *Raspberry Pi OS Lite (64-bit)*, Debian 13 "Trixie". In the Imager settings set a user name, the Wi-Fi (for setup only), SSH with a public key, and a unique host name (e.g. `crown-crows-2`).
 2. **Hardware.** With all power off, connect as described in [HARDWARE](HARDWARE.md): camera to the CSI connector; PIR OUT to GPIO17 (physical pin 11), VCC to 5 V, GND to GND; light to GPIO27/22/23 (pins 13/15/16; see [LIGHTING](LIGHTING.md)); servo signal to GPIO18 (pin 12), servo + to its own 5–6 V supply, servo − to that supply **and** a Pi GND pin.
-3. **Copy the project** from the setup computer (replace `<user>` and `<pi>`):
+3. **Install with one command** from the setup computer (replace `<user>` and `<pi>`):
    ```bash
-   git clone https://github.com/artsensiva/crown-crows.git
-   cd crown-crows && bash deploy/build_model.sh
-   rsync -a --exclude .git --exclude '.venv*' --exclude captures --exclude logs --exclude config \
-         ./ <user>@<pi>:crown-crows/
+   git clone https://github.com/artsensiva/crown-crows.git && cd crown-crows
+   bash deploy/setup_pi.sh <user>@<pi>
    ```
-   `build_model.sh` creates `models/mobileclip2-s0/model.onnx`. The model can also be rebuilt on the Pi itself with `export_model.py` ([RECOGNITION](RECOGNITION.md)); with another PyTorch version its checksum differs, but the scores are identical.
-4. **Install** on the new Pi (asks for the user's password; downloads about 100 MB):
-   ```bash
-   cd ~/crown-crows && bash deploy/install.sh
-   ```
-   It checks the files and the model checksum, installs `rpicam-apps-lite`, `python3-venv`, `python3-gpiozero` and `python3-lgpio`, builds `.venv-detector` from `deploy/requirements-runtime.txt`, enables hardware PWM, adds the user to the `gpio` and `video` groups, makes the system log persistent (Raspberry Pi OS keeps it in RAM by default; capped at 50 MB), enables lingering, installs the service and runs the self-test. It can be run again safely. If your model checksum differs, put it into `--model-sha256` in the service file and into `install.sh`.
+   `setup_pi.sh` builds the model if it is missing (`deploy/build_model.sh`: downloads the pinned weights, about 300 MB, and exports the 46 MB `model.onnx`), copies the project and the model to `~/crown-crows` on the Pi, and runs `deploy/install.sh` there. The installer checks the files and the model checksum, installs `rpicam-apps-lite`, `python3-venv`, `python3-gpiozero` and `python3-lgpio`, builds `.venv-detector` from `deploy/requirements-runtime.txt`, enables hardware PWM, adds the user to the `gpio` and `video` groups, makes the system log persistent (capped at 50 MB), enables lingering, installs the service and runs the self-test. Each system step checks first, so the Pi asks for its password only if something is still missing. Running it again is safe.
+4. **Rebuild everything** (optional, to verify a complete installation): `bash deploy/setup_pi.sh <user>@<pi> --fresh` deletes everything in `~/crown-crows` on the Pi except `config/` (servo calibration, tray area), `captures/` and `logs/`, then installs from scratch. If you built the model with another PyTorch version, its checksum differs (the scores are identical): `setup_pi.sh` then tells you where to put the new checksum.
 5. **Reboot** (`sudo reboot`) so hardware PWM and the group changes take effect. The service starts by itself (status light: blue, then blue blinking, then three green flashes when ready, then dark). Without a servo calibration it detects but makes no strokes, shows a red blip every 5 s, and says so in its log.
 6. **Set up this unit** (mechanism clear, servo supply on):
    - **Servo:** follow [SERVO](SERVO.md#calibration-procedure) with `servo_bench.py` and save `home`, `dump_only` and `dump_reward`. If the mechanism is identical to an existing unit, start from its `config/local.servo.json` and check each position with `python3 -B servo_bench.py --goto <position> --clear`.
