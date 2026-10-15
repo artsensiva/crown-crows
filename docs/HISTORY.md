@@ -55,3 +55,11 @@ A plain grey card as the tray floor, in dim light (worst case): the empty card s
 ## 2026-10-15: Second grey-card session, descriptions and threshold
 
 Light leaks sealed, white reflectors added (colours neutral, still dim). With coin, button and washer listed as competitors, "button" took most of the vote from caps seen from above. Without them, all 14 caps and 6 lids of both sessions scored at least 0.81, other objects at most 0.11. Owner decisions: these three descriptions removed (a coin is now rewarded, which is acceptable), threshold 0.6 ([RECOGNITION](RECOGNITION.md#second-grey-card-session-2026-10-15-leaks-sealed-reflectors-still-dim)).
+
+## 2026-10-15: The bench Pi runs Crown Crows; one-command installation
+
+- The owner's Pi was switched from the first prototype's installation to Crown Crows; its servo calibration carried over, and the old data was backed up to the setup computer and removed from the Pi.
+- The installer now checks every system step first and asks for the password only when something is missing.
+- Analysing the whole tray area at full resolution made a NO take 10 s; the area is now reduced to at most 512 px before recognition (same scores): YES 2.6–2.7 s, NO 6.6–6.9 s on the Pi.
+- A fresh clone failed to build the model (torchvision did not match the pinned torch); with torch and torchvision both from the CPU index and pinned versions, a fresh clone builds a byte-identical model.
+- **Verified by the owner:** `bash deploy/setup_pi.sh <user>@<pi> --fresh` from a fresh GitHub clone rebuilt everything on the Pi and passed the self-test 6/6 with the network blocked.
