@@ -15,7 +15,7 @@
 - [ ] **Migrate the bench Pi** to this project, installed like any other unit; self-test, then a live test with caps ([TESTING](TESTING.md)).
 - [ ] **Separate servo supply** (power bank port or regulator); the Pi reported undervoltage while powering the servo ([POWER](POWER.md)).
 - [x] **Licence:** all rights reserved; permission on request (free for private individuals, commercial licence for public authorities and companies) ([LICENSE](../LICENSE)).
-- [ ] **Publish the repository** (public, for viewing), when the owner decides.
+- [x] **Repository public** (for viewing), 2026-10-15.
 - [ ] **A recognition model under a business-friendly licence** before any sale: Apple's MobileCLIP2 licence allows only non-commercial research, including the exported model. Candidates: CLIP-type models under MIT or Apache-2.0 (for example OpenAI CLIP, TinyCLIP), measured for speed on the Pi 3; or a small model trained on our own photos with a permissively licensed backbone. Same tests as now (grey-card sessions, self-test).
 
 ## Open decisions
