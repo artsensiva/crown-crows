@@ -109,7 +109,7 @@ def main():
                                    tray=tray, dump_seconds=.5)
 
         def classify(frame):
-            result = recognise(cv2.cvtColor(detect.region(frame, tray), cv2.COLOR_BGR2RGB))
+            result = recognise(detect.tray_rgb(frame, tray, cv2))
             return result["cap_score"], max(result["scores"], key=result["scores"].get)
 
         journal = io.StringIO()
