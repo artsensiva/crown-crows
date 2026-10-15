@@ -5,7 +5,9 @@
 #
 #   cd ~/crown-crows && bash deploy/install.sh
 #
-# Safe to run again: every step checks what is already done. See docs/DEPLOY.md.
+# Safe to run again: every step checks what is already done, and sudo (the
+# password) is only needed for steps that still have something to do.
+# See docs/DEPLOY.md.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 ROOT=$PWD
@@ -24,8 +26,14 @@ done
 echo "$MODEL_SHA256  $MODEL" | sha256sum -c --quiet && echo "model checksum OK"
 
 step "2/8 System packages (camera tools, GPIO libraries, Python venv)"
-sudo apt-get update
-sudo apt-get install -y rpicam-apps-lite python3-venv python3-gpiozero python3-lgpio
+PACKAGES="rpicam-apps-lite python3-venv python3-gpiozero python3-lgpio"
+if dpkg-query -W -f='${Status}\n' $PACKAGES 2>/dev/null | grep -vq "install ok installed" \
+   || [ "$(dpkg-query -W -f='${Status}\n' $PACKAGES 2>/dev/null | wc -l)" -ne 4 ]; then
+    sudo apt-get update
+    sudo apt-get install -y $PACKAGES
+else
+    echo "already installed: $PACKAGES"
+fi
 
 step "3/8 Python environment .venv-detector (runtime packages only)"
 [ -x .venv-detector/bin/python ] || python3 -m venv --system-site-packages .venv-detector
@@ -44,19 +52,31 @@ else
 fi
 
 step "5/8 Permissions: $USER in the gpio and video groups"
-sudo usermod -aG gpio,video "$USER"
+if id -nG "$USER" | grep -qw gpio && id -nG "$USER" | grep -qw video; then
+    echo "already in gpio and video"
+else
+    sudo usermod -aG gpio,video "$USER"
+fi
 
 step "6/8 Keep the system log across reboots (capped at 50 MB)"
 # Raspberry Pi OS keeps the log in RAM by default (40-rpi-volatile-storage.conf);
 # without a persistent log a crash leaves no evidence.
-sudo mkdir -p /etc/systemd/journald.conf.d /var/log/journal
-printf '[Journal]\nStorage=persistent\nSystemMaxUse=50M\n' | sudo tee /etc/systemd/journald.conf.d/90-crown-crows.conf >/dev/null
-sudo systemctl restart systemd-journald
-# Move the log from RAM to the card now; otherwise this happens only at the next boot.
-sudo journalctl --flush
+if [ -d /var/log/journal ] && grep -qs '^Storage=persistent' /etc/systemd/journald.conf.d/*.conf; then
+    echo "already persistent"
+else
+    sudo mkdir -p /etc/systemd/journald.conf.d /var/log/journal
+    printf '[Journal]\nStorage=persistent\nSystemMaxUse=50M\n' | sudo tee /etc/systemd/journald.conf.d/90-crown-crows.conf >/dev/null
+    sudo systemctl restart systemd-journald
+    # Move the log from RAM to the card now; otherwise this happens only at the next boot.
+    sudo journalctl --flush
+fi
 
 step "7/8 Service crown-crows-detect: start at boot without a login"
-sudo loginctl enable-linger "$USER"
+if [ "$(loginctl show-user "$USER" -p Linger --value 2>/dev/null)" = yes ]; then
+    echo "lingering already enabled"
+else
+    sudo loginctl enable-linger "$USER"
+fi
 mkdir -p "$HOME/.config/systemd/user" logs captures config
 cp deploy/crown-crows-detect.service "$HOME/.config/systemd/user/"
 systemctl --user daemon-reload
