@@ -1,0 +1,10 @@
+# Python packages the production service needs on the Pi (verified on
+# Raspberry Pi OS Lite 64-bit, Debian 13, Python 3.13.5, 2026-10-14).
+# gpiozero and lgpio come from the system packages (python3-gpiozero,
+# python3-lgpio); the venv is created with --system-site-packages.
+# torch and open_clip are not needed at runtime: they are only
+# used once on the setup machine to export the model.
+onnxruntime==1.23.2
+opencv-python-headless==4.11.0.86
+numpy==2.5.4
+pillow==12.3.0
