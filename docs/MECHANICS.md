@@ -41,7 +41,7 @@ Status (2026-10-15): **design study, nothing built yet.** This document turns th
   - Steeper baffles and larger peanuts jammed. Tilting the feeder a few degrees off vertical made it less reliable.
   - Moving the food outlet next to the deposit hole helped the birds link deposit and reward.
   - Magpies were reluctant to step onto the platform.
-- **Corvid Cleaning (Södertälje, 2022):** a hooded crow puts a piece of litter into a slot and the machine rejects leaves or stones and gives a peanut. The pilot was not scaled up ([case study](https://journals.sagepub.com/doi/10.1177/25166042241296275); [My Modern Met](https://mymodernmet.com/crows-tidy-litter-sweden/)).
+- **Corvid Cleaning (Södertälje, 2022):** a hooded crow puts a piece of litter into a slot and the machine rejects leaves or stones and gives a peanut. The pilot was not scaled up.
 
 ## Reference design
 

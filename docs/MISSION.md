@@ -30,8 +30,8 @@ Remaining risks to watch: broken caps and loose sealing rings, sharp edges of be
 | Project | What it did | Status |
 |---|---|---|
 | Joshua Klein, *Crow Box* (USA, about 2008) | A vending machine that taught crows in stages to deposit coins for peanuts ([NPR](https://www.npr.org/2008/03/04/87878028/inventor-trains-crows-to-find-money); [thecrowbox.com](https://thecrowbox.com/)) | Open research kit |
-| Ruben van der Vleuten and Bob Spikman, *Crowbar* (Netherlands, 2017) | A machine concept that recognised deposited litter with a camera and released food ([Gigazine](https://gigazine.net/gsc_news/en/20171017-crowded-cities)) | Design concept |
-| Christian Günther-Hanssen, *Corvid Cleaning* (Sweden, 2022) | A pilot in which wild crows deposit litter in a machine that rejects other objects and dispenses food ([case study](https://journals.sagepub.com/doi/10.1177/25166042241296275)) | Pilot; not known to have scaled |
+| Ruben van der Vleuten and Bob Spikman, *Crowbar* (Netherlands, 2017) | A machine concept that recognised deposited litter with a camera and released food | Design concept |
+| Christian Günther-Hanssen, *Corvid Cleaning* (Sweden, 2022) | A pilot in which wild crows deposit litter in a machine that rejects other objects and dispenses food | Pilot; not known to have scaled |
 
 **What Crown Crows adds:** a fully documented, open build on a Raspberry Pi 3; recognition that runs entirely on the device without network, cloud or custom training; measured timings and a self-test on the device; and an explicit focus on battery operation and bird welfare.
 
