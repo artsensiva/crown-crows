@@ -130,6 +130,12 @@
   .sev.urgent { background: var(--bad-bg); color: var(--bad); } .sev.soon { background: var(--warn-bg); color: var(--warn); } .sev.info { background: var(--info-bg); color: var(--info); }
   h2 { font-size: 14px; margin: 24px 0 6px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--soft); }
   .meta { color: var(--soft); font-size: 13px; }
+  .hmeta { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+  .alerts { font-size: 12px; color: var(--soft); text-decoration: none; display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; }
+  .alerts span { border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; white-space: nowrap; }
+  .alerts span.warn { border-color: color-mix(in srgb, var(--warn) 45%, var(--line)); }
+  .alerts span.bad { border-color: var(--bad); color: var(--bad); }
+  .alerts:hover span { border-color: var(--info); }
   button { font: inherit; padding: 4px 10px; border: 1px solid var(--line); background: transparent; color: var(--ink); border-radius: 3px; cursor: pointer; min-height: 32px; }
   .scroll { overflow-x: auto; }
   table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
@@ -178,7 +184,8 @@
 <main>
 <header>
   <h1><img id="logo" alt="" src="data:,">Crown Crows · Monitoring</h1>
-  <span class="meta"><span class="dot" id="fresh"></span><span id="status">Connecting…</span></span>
+  <span class="hmeta"><span class="meta"><span class="dot" id="fresh"></span><span id="status">Connecting…</span></span>
+    <a href="#mood" class="alerts" id="alerts" hidden title="Open the details"></a></span>
   <div class="stage" aria-label="A bear playing Hamlet, silently">
     <svg viewBox="0 0 120 130" role="img" aria-label="Cute bear in a black doublet and ruff, holding a skull">
       <g class="bear">
@@ -553,6 +560,7 @@ function assess() {
   }
   const level = issues.some((i) => i[1] === "bad") ? "bad" : issues.length ? "warn" : "ok";
   lastLevel = level; lastIssues = issues;
+  safely(renderAlerts);
   const banner = $("banner");
   banner.className = "banner " + level;
   setIcon(level);
@@ -579,6 +587,24 @@ for (const box of ["issues", "mood"]) $(box).addEventListener("toggle", (event) 
   if (event.target.open) openIssues.add(id); else openIssues.delete(id);
   lastIssuesHtml = ""; lastFunIssuesHtml = "";
 }, true);
+
+// Header: the open problems again, in a few words; a click opens the full explanation.
+const SHORT = { no_connection: "no connection", detector_down: "detector stopped", undervoltage_now: "power low now",
+  undervoltage_boot: "power dips since start", servo_undervoltage: "servo pulls power", servo_failure: "servo failed",
+  hot: "CPU hot", disk: "disk almost full", memory: "memory low", clock: "clock not synced" };
+let lastAlerts = "";
+function renderAlerts() {
+  const rank = { urgent: 0, soon: 1, info: 2 };
+  const html = [...lastIssues].sort((x, y) => (rank[SEVERITY[x[0]]] ?? 1) - (rank[SEVERITY[y[0]]] ?? 1)).map(([id, lvl]) => `<span class="${lvl}">${FUN[id] ? FUN[id][0] : "⚠️"} ${SHORT[id] || id}</span>`).join("");
+  if (html === lastAlerts) return; lastAlerts = html;
+  $("alerts").innerHTML = html; $("alerts").hidden = !html;
+}
+$("alerts").addEventListener("click", (event) => {
+  event.preventDefault();
+  const target = document.body.classList.contains("nerd") ? $("issues") : $("mood");
+  target.scrollIntoView({ behavior: "smooth", block: "start" });
+  target.classList.remove("spot"); void target.offsetWidth; target.classList.add("spot");
+});
 
 // ---------- Crow mode: the same data, told like a friend would ----------
 let lastGuestHtml = "";
