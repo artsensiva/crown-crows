@@ -68,6 +68,15 @@
   .fix { margin: 6px 0 0; } .fun-issue .line { font-size: 16px; font-weight: 600; }
   .fun-issue details { margin-top: 8px; } .fun-issue summary { cursor: pointer; color: var(--soft); }
   .star { color: var(--soft); font-size: 12px; }
+  .mood { flex-wrap: wrap; } .mood .head { display: flex; gap: 16px; align-items: center; width: 100%; }
+  .working { margin: 10px 0 2px; font-size: 15px; width: 100%; }
+  .mood-issues { width: 100%; margin-top: 6px; }
+  .mi { background: var(--bg); border-radius: 12px; padding: 10px 12px; margin-top: 8px; }
+  .mi .top { display: flex; gap: 8px; align-items: baseline; justify-content: space-between; flex-wrap: wrap; font-weight: 600; font-size: 15px; }
+  .mi .facts { color: var(--soft); margin-top: 3px; } .mi .todo { margin-top: 3px; }
+  .mi details { margin-top: 4px; } .mi summary { cursor: pointer; color: var(--soft); }
+  .sev { font-size: 12px; font-weight: 600; padding: 1px 8px; border-radius: 999px; white-space: nowrap; }
+  .sev.urgent { background: var(--bad-bg); color: var(--bad); } .sev.soon { background: var(--warn-bg); color: var(--warn); } .sev.info { background: var(--info-bg); color: var(--info); }
   h2 { font-size: 14px; margin: 24px 0 6px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--soft); }
   .meta { color: var(--soft); font-size: 13px; }
   button { font: inherit; padding: 4px 10px; border: 1px solid var(--line); background: transparent; color: var(--ink); border-radius: 3px; cursor: pointer; min-height: 32px; }
@@ -366,25 +375,24 @@ const GUIDE = {
     meaning: "Right now the Pi's 5 V supply is below about 4.63 V.",
     why: "The Pi slows itself down, can crash or reboot, and a power dip during a write can corrupt the SD card.",
     cause: "On this box the servo is powered from the Pi's 5 V pin; each stroke draws current peaks of up to 0.6–0.75 A. A weak power supply or a long, thin cable makes it worse.",
-    steps: ["Give the servo its own supply (see \"Undervoltage during servo moves\").", "Power the Pi with a good 5.1 V, at least 2.5 A supply and a short, thick cable.", "Avoid unplugging or updating while this is shown."],
+    steps: ["Fit a 1000–2200 µF capacitor at the servo (see \"Undervoltage during servo moves\").", "Check the Pi's supply is 5.1 V, at least 2.5 A, with a short cable.", "Avoid unplugging or updating while this is shown."],
   },
   undervoltage_boot: {
     title: "Undervoltage since boot",
     meaning: "At least once since the Pi last started, its 5 V supply dropped below about 4.63 V. It is not happening at this moment.",
     why: "Each dip risks a crash or SD-card damage. The flag is a memory: it stays on until the next reboot, even after the cause is fixed.",
-    cause: "Almost certainly the servo strokes (see the servo warning). The dips happen at the moment the servo starts moving.",
-    steps: ["Fix the servo power first (next warning).", "Then reboot the Pi once: the flag clears.", "If it comes back after a reboot, the supply is still too weak."],
+    cause: "Mostly the servo: about half of the dips happen within seconds of a servo move. The rest happen at rest (Wi-Fi bursts, or the servo holding a loaded tray), so the supply has little headroom overall. The breakdown is shown in the data line.",
+    steps: ["Fit the capacitor at the servo (next warning).", "Then reboot the Pi once: the flag clears.", "If it comes back after the reboot, watch the breakdown: dips at rest point to the supply or the tray balance."],
   },
   servo_undervoltage: {
     title: "Undervoltage during servo moves",
     meaning: "While the servo was moving, the Pi itself measured undervoltage. The servo control checks the power flags at every step and records them per move.",
-    why: "This is the direct cause of the undervoltage flags: the servo pulls the Pi's supply down. The strokes still complete, but each one is a risk for the Pi.",
-    cause: "The servo's + wire is on the Pi's 5 V pin, so the Pi and the servo share one supply through the Pi's board. A starting servo draws far more current than the Pi's 5 V pin path is meant for.",
+    why: "The servo is the biggest single trigger of the Pi's power dips. The strokes still complete, but each dip slows the Pi briefly and is a small risk for the SD card.",
+    cause: "The servo is powered from the Pi's 5 V pin (by design on this box). When it starts moving it draws current peaks of up to 0.6–0.75 A for a fraction of a second.",
     steps: [
-      "Power the servo separately: a second port of the power bank, or a 5–6 V regulator rated at least 1 A.",
-      "Connect the servo's − wire to that supply's − and to a Pi GND pin (shared ground); keep the signal wire on GPIO18 (pin 12).",
-      "Put a 470–1000 µF capacitor across the servo supply close to the servo.",
-      "Check: new visits should add no moves with undervoltage readings; then reboot once to clear the \"since boot\" flag.",
+      "Fit an electrolytic capacitor of 1000–2200 µF, 10 V or more, across the servo's + and − wires, as close to the servo as possible (mind the polarity). It supplies the current peaks instead of the Pi.",
+      "Keep the servo's power wires short and off any breadboard.",
+      "Check: new moves should show no undervoltage readings; then reboot once to clear the \"since boot\" flag.",
     ],
   },
   servo_failure: {
@@ -409,16 +417,45 @@ const GUIDE = {
 const FUN = {
   no_connection: ["📡", "Can't reach the crow office", "Check the Pi has power and you're on the same Wi-Fi."],
   detector_down: ["😴", "The detector is napping", "It usually wakes up by itself within a minute."],
-  undervoltage_now: ["🪫", "The Pi is starving for power right now", "Give the servo its own power and use a strong 5 V supply."],
-  undervoltage_boot: ["🧠", "The Pi remembers a power hiccup since it woke up", "Fix the servo power, then reboot the Pi once to forget it."],
-  servo_undervoltage: ["⚡🍝", "The servo slurps the Pi's power like spaghetti", "Plug the servo into its own power (e.g. a second power-bank port)."],
+  undervoltage_now: ["🪫", "The Pi is short of power right now", "Don't unplug anything; the capacitor at the servo is the fix."],
+  undervoltage_boot: ["🧠", "The Pi had short power dips since it started", "Goes away with one reboot after the capacitor is fitted."],
+  servo_undervoltage: ["⚡🍝", "The servo briefly pulls the Pi's power down when it moves", "A 1000–2200 µF capacitor at the servo (on your list)."],
   servo_failure: ["🦾", "The tray arm got stuck", "Check nothing blocks the tray."],
   clock: ["🕰️", "The Pi lost track of time", "Connect it to the network once, or add a clock module."],
   hot: ["🥵", "The Pi is sweating", "Give the box some shade or air."],
   disk: ["💾", "Running out of shelf space", "Move old photos off the Pi."],
   memory: ["🧠", "The Pi's head is full", "A reboot usually helps."],
 };
+const SEVERITY = { no_connection: "urgent", detector_down: "urgent", undervoltage_now: "urgent", servo_failure: "urgent",
+  servo_undervoltage: "soon", hot: "soon", disk: "soon", memory: "soon", undervoltage_boot: "info", clock: "info" };
+const SEVERITY_TEXT = { urgent: "🚨 urgent", soon: "🛠️ fix soon", info: "ℹ️ just so you know" };
 let openIssues = new Set(), lastIssuesHtml = "", lastFunIssuesHtml = "", lastLevel = "warn", lastIssues = [];
+let dipTimes = null, dipsFetchedAt = 0;  // kernel undervoltage events, read with the error log at most every 10 min
+async function fetchDips() {
+  if (document.hidden || Date.now() - dipsFetchedAt < 600000) return;
+  dipsFetchedAt = Date.now();
+  try {
+    const e = await (await api("/api/errors")).json();
+    dipTimes = e.kernel_undervoltage.filter((l) => l.includes("Undervoltage detected")).map((l) => Date.parse(l.split(" ")[0])).filter((v) => !isNaN(v));
+  } catch (error) { dipsFetchedAt = 0; }
+}
+function dipBreakdown() {
+  // Each kernel dip since the Pi started, by what the box was doing within a few seconds.
+  if (!dipTimes || !health) return null;
+  const bootMs = Date.now() - health.uptime_seconds * 1000;
+  const startMs = current && current.detector_running_seconds != null ? Date.now() - current.detector_running_seconds * 1000 : null;
+  const moves = logs.servo.rows.filter((r) => r.goto).map((r) => r.time_unreliable * 1000);
+  const visits = logs.detect.rows.filter((r) => r.decision).map((r) => { const end = Date.parse(r.wall_clock_unreliable); return [end - r.trigger_to_decision_seconds * 1000 - 1500, end + 1500]; });
+  const c = { total: 0, servo: 0, visit: 0, start: 0, rest: 0 };
+  for (const d of dipTimes.filter((d) => d >= bootMs)) {
+    c.total++;
+    if (moves.some((m) => Math.abs(d - m) < 3000)) c.servo++;
+    else if (visits.some(([a, b]) => d >= a && d <= b)) c.visit++;
+    else if (startMs && d >= startMs - 30000 && d <= startMs + 120000) c.start++;
+    else c.rest++;
+  }
+  return c;
+}
 function assess() {
   // Overall status from data already on the page; nothing extra is read.
   const issues = [];  // [id, level, evidence]
@@ -456,12 +493,7 @@ function assess() {
   const nerd = (id, evidence) => { const g = GUIDE[id];
     return `<dl><dt>What it means</dt><dd>${g.meaning}</dd><dt>Why it matters</dt><dd>${g.why}</dd><dt>Likely cause</dt><dd>${g.cause}</dd>` +
       `<dt>What to do</dt><dd><ol>${g.steps.map((s) => `<li>${escapeHtml(s)}</li>`).join("")}</ol></dd><dt>Data</dt><dd>${escapeHtml(evidence)}</dd></dl>`; };
-  const funHtml = issues.map(([id, lvl, evidence]) => {
-    const [emoji, line, fix] = FUN[id];
-    return `<div class="card fun-issue"><div class="line">${emoji} ${line}</div><div class="fix">🔧 ${fix}</div>` +
-      `<details data-id="fun-${id}"${openIssues.has("fun-" + id) ? " open" : ""}><summary>🤓 Nerd details</summary>${nerd(id, evidence)}</details></div>`;
-  }).join("");
-  if (funHtml !== lastFunIssuesHtml) { $("funIssues").innerHTML = funHtml; lastFunIssuesHtml = funHtml; }
+  nerdDetails = nerd;
   const html = issues.map(([id, lvl, evidence]) => {
     const g = GUIDE[id];
     return `<details data-id="${id}"${openIssues.has(id) ? " open" : ""}><summary><span class="dot ${lvl}"></span>${FUN[id][0]} ${g.title}<span class="meta">${escapeHtml(evidence)}</span></summary>` +
@@ -473,7 +505,8 @@ function assess() {
   $("fresh").className = "dot " + (age < 10 ? "ok" : age < 60 ? "warn" : "bad");
   $("fresh").title = n ? `live data ${Math.round(age)} s old` : "no live data";
 }
-for (const box of ["issues", "funIssues"]) $(box).addEventListener("toggle", (event) => {
+let nerdDetails = () => "";
+for (const box of ["issues", "mood"]) $(box).addEventListener("toggle", (event) => {
   const id = event.target.dataset && event.target.dataset.id; if (!id) return;
   if (event.target.open) openIssues.add(id); else openIssues.delete(id);
   lastIssuesHtml = ""; lastFunIssuesHtml = "";
@@ -485,11 +518,38 @@ function renderFun() {
   const n = current, rows = logs.detect.rows.filter((r) => r.decision);
   const today = dayKey(new Date().toISOString()), t = stats(rows.filter((r) => dayKey(r.wall_clock_unreliable) === today)), all = stats(rows);
   const moods = { ok: ["😎", "All chill", "The crow office is open and everything works."],
-                  warn: ["😬", lastIssues.length > 1 ? "Mostly fine, a couple of nuances" : "Mostly fine, one nuance", lastIssues.length ? FUN[lastIssues[0][0]][1] : ""],
+                  warn: ["😬", lastIssues.length > 1 ? `Mostly fine, ${lastIssues.length} things to look at` : "Mostly fine, one thing to look at", "Nothing is broken; the details are below."],
                   bad: ["😱", "Houston, we have a crow-blem", (() => { const worst = lastIssues.find((i) => i[1] === "bad"); return worst ? FUN[worst[0]][1] : ""; })()] };
   const [emoji, title, sub] = n || lastIssues.length ? moods[lastLevel] : ["🐦", "Connecting to the crow office…", "one sec"];
   $("mood").className = "card mood " + (n || lastIssues.length ? lastLevel : "warn");
-  $("mood").innerHTML = `<div class="big">${emoji}</div><div><div class="title">${title}</div><div class="sub">${escapeHtml(sub)}</div></div>`;
+  // Is the box doing its job? That comes first.
+  const down = lastIssues.some((i) => i[0] === "detector_down" || i[0] === "no_connection");
+  const armStuck = lastIssues.some((i) => i[0] === "servo_failure");
+  const working = !n && !lastIssues.length ? "" : down ? "❌ <b>Is the box working?</b> No — crows are not being served right now."
+    : armStuck ? "⚠️ <b>Is the box working?</b> Partly — recognition works, but the tray arm failed recently."
+    : `✅ <b>Is the box working?</b> Yes — crows are served normally (${t.n} visit${t.n === 1 ? "" : "s"} today, ${t.servoFailed ? t.servoFailed + " failed strokes" : "no failed strokes"}).`;
+  const dips = dipBreakdown();
+  const moves = logs.servo.rows.filter((r) => r.goto), bootS = health ? Date.now() / 1000 - health.uptime_seconds : 0;
+  const movesBoot = moves.filter((m) => m.time_unreliable >= bootS), dippedBoot = movesBoot.filter((m) => m.power_warnings > 0);
+  const lastDipMove = dippedBoot[dippedBoot.length - 1];
+  const facts = (id, evidence) => {
+    if (id === "servo_undervoltage" && movesBoot.length)
+      return `${dippedBoot.length} of ${movesBoot.length} servo moves since the Pi started had a dip${lastDipMove ? ` · last ${ago(Date.now() / 1000 - lastDipMove.time_unreliable)}` : ""}`;
+    if (id === "undervoltage_boot")
+      return dips ? `${dips.total} short dips since the Pi started (${ago(health.uptime_seconds)}): ${dips.servo} during servo moves · ${dips.visit} during visits · ${dips.start} at start-up · ${dips.rest} at rest`
+        : `since the Pi started ${health ? ago(health.uptime_seconds) : ""} · loading the dip history…`;
+    return evidence;
+  };
+  const order = { urgent: 0, soon: 1, info: 2 };
+  const items = [...lastIssues].sort((a, b) => order[SEVERITY[a[0]]] - order[SEVERITY[b[0]]]).map(([id, lvl, evidence]) => {
+    const [e, line, fix] = FUN[id], sev = SEVERITY[id];
+    return `<div class="mi"><div class="top"><span>${e} ${line}</span><span class="sev ${sev}">${SEVERITY_TEXT[sev]}</span></div>` +
+      `<div class="facts">📈 ${escapeHtml(facts(id, evidence))}</div><div class="todo">🔧 ${escapeHtml(fix)}</div>` +
+      `<details data-id="fun-${id}"${openIssues.has("fun-" + id) ? " open" : ""}><summary>🤓 Nerd details</summary>${nerdDetails(id, evidence)}</details></div>`;
+  }).join("");
+  const moodHtml = `<div class="head"><div class="big">${emoji}</div><div><div class="title">${title}</div><div class="sub">${escapeHtml(sub)}</div></div></div>` +
+    (working ? `<div class="working">${working}</div>` : "") + (items ? `<div class="mood-issues">${items}</div>` : "");
+  if (moodHtml !== lastFunIssuesHtml) { $("mood").innerHTML = moodHtml; lastFunIssuesHtml = moodHtml; }
 
   const bubbles = [];
   if (n) {
@@ -601,6 +661,7 @@ function refresh(withHealth) {  // one update at a time: overlapping updates wou
   return syncing;
 }
 async function doRefresh(withHealth) {
+  fetchDips();
   try {
     await syncLog("detect"); await syncLog("servo");
     if (withHealth) health = await (await api("/api/health")).json();
@@ -634,7 +695,7 @@ $("loadErrors").addEventListener("click", async () => {
   try {
     const e = await (await api("/api/errors")).json();
     $("errors").innerHTML = `<h2>🧯 Detector warnings and errors (last 50)</h2><pre>${escapeHtml(e.service.join("\n") || "None recorded")}</pre>` +
-      `<h2>🪫 Kernel undervoltage events</h2><pre>${escapeHtml(e.kernel_undervoltage.join("\n") || "None recorded")}</pre>`;
+      `<h2>🪫 Kernel undervoltage events (last 50 of ${e.kernel_undervoltage.length})</h2><pre>${escapeHtml(e.kernel_undervoltage.slice(-50).join("\n") || "None recorded")}</pre>`;
   } catch (error) { $("errors").textContent = error.message; }
 });
 

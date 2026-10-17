@@ -161,9 +161,9 @@ def now_reading(server):
 def errors():
     service = run(["journalctl", "--user", "-u", "crown-crows-detect", "-p", "warning", "-n", "50", "-o",
                    "short-iso", "--no-pager"], timeout=15)
-    kernel = run(["journalctl", "-k", "--no-pager", "-o", "short-iso", "--grep", "voltage"], timeout=15)
+    kernel = run(["journalctl", "-k", "--no-pager", "-o", "short-iso", "--grep", "Undervoltage detected"], timeout=15)
     lines = lambda text: [line for line in text.splitlines() if line and not line.startswith("--")]
-    return {"service": lines(service)[-50:], "kernel_undervoltage": lines(kernel)[-50:]}
+    return {"service": lines(service)[-50:], "kernel_undervoltage": lines(kernel)[-500:]}
 
 
 class Handler(BaseHTTPRequestHandler):
