@@ -85,3 +85,9 @@ Free, no domain and no router changes: [Tailscale Funnel](https://tailscale.com/
 **⏻ Power off** in the header (both modes) shuts the Pi down cleanly, for example before work on the wiring. It asks for confirmation (and warns if a visit is in progress), then shows what to do: wait until the green light stops blinking (about 20 s), then unplug. The page notices when the Pi stops answering. It cannot switch the Pi on again: plug the power back in, and the detector and the dashboard start by themselves.
 
 This is the dashboard's only action besides reading. `POST /api/poweroff` needs the access token and the word `poweroff`, and works only with the polkit rule `deploy/50-crown-crows-poweroff.rules`, which lets this one user power off without a password and allows nothing else. `deploy/install.sh` installs it (one sudo prompt); without it the button reports "not allowed".
+
+## Where the power dips come from
+
+The dashboard sorts every kernel undervoltage report since the Pi started by what the box was doing: **photographing and recognising** (from the motion to the decision), **inside a servo move** (the move's own duration plus 1 s), **start-up**, or **rest**. The servo log records, per move, the power flags before the move (`flags_before`), the undervoltage readings during it (`undervoltage_readings`) and whether a dip began during the move (`dip_started_during_move`). A move made while the Pi is still flagged from recognition is therefore not blamed on the servo.
+
+Measured on 2026-10-17 after fitting a 2200 µF capacitor at the servo, over 9 visits: every visit had one dip 2–4 s after the motion, while light, camera and recognition on four cores start; none fell inside a servo move; three more came at start-up. The supply or its cable has too little headroom under the Pi's own peak load. Next test: recognition on 2 cores (`--threads 2`).

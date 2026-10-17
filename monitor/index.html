@@ -443,11 +443,16 @@ function render() {
   seenVisits = new Set(rows.map((r) => `${r.boot}-${r.sequence}`));
 
   const moves = logs.servo.rows.filter((r) => r.goto);
-  const warned = moves.filter((r) => r.power_warnings > 0);
+  const recorded = moves.filter((r) => "dip_started_during_move" in r), started = recorded.filter((r) => r.dip_started_during_move);
+  const already = recorded.filter((r) => !r.dip_started_during_move && r.power_warnings > 0);
+  const dipsHere = dipBreakdown();
   $("power").innerHTML = kv([
     ["🦾 Servo moves recorded", moves.length],
-    ["🪫 Moves with undervoltage readings", `${warned.length}${moves.length ? " (" + pct(warned.length, moves.length) + ")" : ""}`, warned.length ? "bad" : ""],
-    ["🕒 Last move with undervoltage", warned.length ? new Date(warned[warned.length - 1].time_unreliable * 1000).toLocaleString() : "–"],
+    ["⚡ Moves where a dip began during the move", recorded.length ? `${started.length} of ${recorded.length} (${pct(started.length, recorded.length)})` : "not recorded yet (new since 2026-10-17)", started.length ? "bad" : ""],
+    ["🐢 Moves made while the Pi was still low or throttled", recorded.length ? `${already.length} of ${recorded.length} — flags left over from recognition, not the servo` : "–", ""],
+    ["📸 Kernel dips while photographing/recognising (since start)", dipsHere ? `${dipsHere.work} · ${dipsHere.visitsWithDip} of ${dipsHere.visits} visits` : "loading…", dipsHere && dipsHere.work ? "warn" : ""],
+    ["🦾 Kernel dips inside a servo move (since start)", dipsHere ? dipsHere.servo : "loading…", dipsHere && dipsHere.servo ? "warn" : ""],
+    ["🕒 Last move where a dip began", started.length ? new Date(started[started.length - 1].time_unreliable * 1000).toLocaleString() : "–"],
   ]);
 
   $("status").textContent = lastSync ? `Data as of ${lastSync.toLocaleTimeString()} · ${rows.length} visits${failures ? " · connection problem" : ""}` : "Connecting…";
@@ -497,25 +502,35 @@ const GUIDE = {
     title: "Undervoltage now",
     meaning: "Right now the Pi's 5 V supply is below about 4.63 V.",
     why: "The Pi slows itself down, can crash or reboot, and a power dip during a write can corrupt the SD card.",
-    cause: "On this box the servo is powered from the Pi's 5 V pin; each stroke draws current peaks of up to 0.6–0.75 A. A weak power supply or a long, thin cable makes it worse.",
-    steps: ["Fit a 1000–2200 µF capacitor at the servo (see \"Undervoltage during servo moves\").", "Check the Pi's supply is 5.1 V, at least 2.5 A, with a short cable.", "Avoid unplugging or updating while this is shown."],
+    cause: "Measured on this box (2026-10-17, with the capacitor at the servo): the dips come when the Pi starts working hard — camera, light and recognition on all four cores — and at start-up, not from the servo. The supply or its cable cannot hold 5 V under that load.",
+    steps: ["Check the Pi's supply is 5.1 V, at least 2.5 A, with a short, thick cable (the official Pi supply is the safe choice).", "Test recognition on 2 cores instead of 4 (smaller current peaks, slower decisions).", "Avoid unplugging or updating while this is shown."],
   },
   undervoltage_boot: {
     title: "Undervoltage since boot",
     meaning: "At least once since the Pi last started, its 5 V supply dropped below about 4.63 V. It is not happening at this moment.",
     why: "Each dip risks a crash or SD-card damage. The flag is a memory: it stays on until the next reboot, even after the cause is fixed.",
-    cause: "Mostly the servo: about half of the dips happen within seconds of a servo move. The rest happen at rest (Wi-Fi bursts, or the servo holding a loaded tray), so the supply has little headroom overall. The breakdown is shown in the data line.",
-    steps: ["Fit the capacitor at the servo (next warning).", "Then reboot the Pi once: the flag clears.", "If it comes back after the reboot, watch the breakdown: dips at rest point to the supply or the tray balance."],
+    cause: "The data line sorts every dip by what the box was doing: photos and recognition, a servo move, start-up, or rest. On 2026-10-17 (with the capacitor at the servo) every visit had one dip 2–4 s after the motion, while photographing and recognising, and none started during a servo move; three more came at start-up. So the supply has too little headroom when the Pi works hard.",
+    steps: ["Check the power supply and cable (5.1 V, at least 2.5 A, short and thick).", "Or test recognition on 2 cores.", "After a fix, reboot once: the flag clears, and new dips would show here again."],
+  },
+  work_undervoltage: {
+    title: "Undervoltage while photographing and recognising",
+    meaning: "During visits, between the motion and the decision, the kernel reported that the 5 V supply fell below about 4.63 V. That is when the light and camera switch on and recognition runs on all four cores.",
+    why: "The visits still complete, but each dip slows the Pi and is a small risk for the SD card. The Pi stays flagged as low or throttled for several seconds afterwards, so a servo move right after it also shows warnings without being the cause.",
+    cause: "The power supply or its cable cannot hold 5 V when the Pi draws its highest current. The capacitor at the servo cannot help here: it only covers the servo's own short peaks.",
+    steps: [
+      "Check the supply: 5.1 V, at least 2.5 A, short and thick cable; the official Raspberry Pi supply is the safe choice.",
+      "Software test: recognition on 2 cores instead of 4 (--threads 2): smaller current peaks, each photo takes about 1 s longer.",
+      "Watch this line: after a fix, new visits should show no dips.",
+    ],
   },
   servo_undervoltage: {
-    title: "Undervoltage during servo moves",
-    meaning: "While the servo was moving, the Pi itself measured undervoltage. The servo control checks the power flags at every step and records them per move.",
-    why: "The servo is the biggest single trigger of the Pi's power dips. The strokes still complete, but each dip slows the Pi briefly and is a small risk for the SD card.",
-    cause: "The servo is powered from the Pi's 5 V pin (by design on this box). When it starts moving it draws current peaks of up to 0.6–0.75 A for a fraction of a second.",
+    title: "Undervoltage starting during servo moves",
+    meaning: "An undervoltage began while the servo was moving: before the move the supply was fine. Moves that start while the Pi is still low from recognition are not counted.",
+    why: "The servo itself pulls the 5 V rail down. The strokes still complete, but each dip slows the Pi briefly and is a small risk for the SD card.",
+    cause: "The servo is powered from the Pi's 5 V pin (by design on this box) and draws current peaks of up to 0.6–0.75 A when it starts.",
     steps: [
-      "Fit a low-ESR electrolytic capacitor of 1000–2200 µF, 16 V (10 V minimum), across the servo's + and − wires, as close to the servo as possible (mind the polarity). It supplies the current peaks instead of the Pi.",
-      "Keep the servo's power wires short and off any breadboard.",
-      "Check: new moves should show no undervoltage readings; then reboot once to clear the \"since boot\" flag.",
+      "Check the capacitor at the servo: + to the red wire, − (stripe) to brown, short leads, firmly connected.",
+      "Check the power supply and cable (5.1 V, at least 2.5 A).",
     ],
   },
   servo_failure: {
@@ -541,8 +556,9 @@ const FUN = {
   no_connection: ["📡", "Can't reach the crow office", "Check the Pi has power and you're on the same Wi-Fi."],
   detector_down: ["😴", "The detector is napping", "It usually wakes up by itself within a minute."],
   undervoltage_now: ["🪫", "The Pi's power is low at this moment", "Usually gone within seconds. If it lasts, check the power supply; don't unplug anything meanwhile."],
-  undervoltage_boot: ["🧠", "The Pi's power dipped below safe since it started", "Fit the capacitor, then reboot once to clear this record. If dips still appear with the servo standing still, the capacitor was not enough."],
-  servo_undervoltage: ["⚡🍝", "The servo briefly pulls the Pi's power down when it moves", "A 1000–2200 µF capacitor at the servo (on your list)."],
+  undervoltage_boot: ["🧠", "The Pi's power dipped below safe since it started", "A record only; it clears with the next reboot. The cause is in the line above."],
+  work_undervoltage: ["⚡📸", "Power dips when the Pi starts working (photos + recognition)", "A stronger power supply or a shorter, thicker cable; or try recognition on 2 cores."],
+  servo_undervoltage: ["⚡🍝", "The servo pulls the Pi's power down when it moves", "Check the capacitor's wiring at the servo and the power supply."],
   servo_failure: ["🦾", "The tray arm got stuck", "Check nothing blocks the tray."],
   clock: ["🕰️", "The Pi lost track of time", "Connect it to the network once, or add a clock module."],
   hot: ["🥵", "The Pi is sweating", "Give the box some shade or air."],
@@ -550,8 +566,8 @@ const FUN = {
   memory: ["🧠", "The Pi's head is full", "A reboot usually helps."],
 };
 const SEVERITY = { no_connection: "urgent", detector_down: "urgent", undervoltage_now: "soon", servo_failure: "urgent",
-  servo_undervoltage: "soon", hot: "soon", disk: "soon", memory: "soon", undervoltage_boot: "info", clock: "info" };
-const ISSUE_TARGET = { servo_undervoltage: "power", undervoltage_boot: "power", undervoltage_now: "health", clock: "health",
+  servo_undervoltage: "soon", work_undervoltage: "soon", hot: "soon", disk: "soon", memory: "soon", undervoltage_boot: "info", clock: "info" };
+const ISSUE_TARGET = { servo_undervoltage: "power", work_undervoltage: "power", undervoltage_boot: "power", undervoltage_now: "health", clock: "health",
   hot: "now", disk: "now", memory: "now", servo_failure: "visits", detector_down: "health", no_connection: "now" };
 const SEVERITY_TEXT = { urgent: "🚨 urgent", soon: "🛠️ fix soon", info: "ℹ️ just so you know" };
 let lowSince = null, openIssues = new Set(), lastIssuesHtml = "", lastFunIssuesHtml = "", lastLevel = "warn", lastIssues = [];
@@ -569,16 +585,21 @@ function dipBreakdown() {
   if (!dipTimes || !health) return null;
   const bootMs = Date.now() - health.uptime_seconds * 1000;
   const startMs = current && current.detector_running_seconds != null ? Date.now() - current.detector_running_seconds * 1000 : null;
-  const moves = logs.servo.rows.filter((r) => r.goto).map((r) => r.time_unreliable * 1000);
-  const visits = logs.detect.rows.filter((r) => r.decision).map((r) => { const end = Date.parse(r.wall_clock_unreliable); return [end - r.trigger_to_decision_seconds * 1000 - 1500, end + 1500]; });
-  const c = { total: 0, servo: 0, visit: 0, start: 0, rest: 0 };
-  for (const d of dipTimes.filter((d) => d >= bootMs)) {
+  // A move's window is its own duration (the log line is written at its end) plus 1 s; a visit's working phase
+  // runs from the motion to the decision. The kernel reports a dip within about 2 s of its start.
+  const moves = logs.servo.rows.filter((r) => r.goto).map((r) => [r.time_unreliable * 1000 - (r.seconds || 0.5) * 1000 - 300, r.time_unreliable * 1000 + 1000]);
+  const visits = logs.detect.rows.filter((r) => r.decision && Date.parse(r.wall_clock_unreliable) >= bootMs)
+    .map((r) => { const end = Date.parse(r.wall_clock_unreliable); return [end - r.trigger_to_decision_seconds * 1000 - 500, end + 300]; });
+  const c = { total: 0, servo: 0, work: 0, start: 0, rest: 0, visits: visits.length, visitsWithDip: 0 };
+  const boot = dipTimes.filter((d) => d >= bootMs);
+  for (const d of boot) {
     c.total++;
-    if (moves.some((m) => Math.abs(d - m) < 3000)) c.servo++;
-    else if (visits.some(([a, b]) => d >= a && d <= b)) c.visit++;
+    if (moves.some(([a, b]) => d >= a && d <= b)) c.servo++;
+    else if (visits.some(([a, b]) => d >= a && d <= b)) c.work++;
     else if (startMs && d >= startMs - 30000 && d <= startMs + 120000) c.start++;
     else c.rest++;
   }
+  c.visitsWithDip = visits.filter(([a, b]) => boot.some((d) => d >= a && d <= b)).length;
   return c;
 }
 function assess() {
@@ -606,13 +627,16 @@ function assess() {
   }
   const failed = rows.slice(-20).filter((r) => r.servo && r.servo.outcome !== "DONE");
   if (failed.length) issues.push(["servo_failure", "bad", `${failed.length} of the last 20 visits`]);
-  const moves = logs.servo.rows.filter((r) => r.goto), recentMoves = moves.slice(-20);
-  const warned = moves.filter((r) => r.power_warnings > 0), recentWarned = recentMoves.filter((r) => r.power_warnings > 0);
-  if (recentWarned.length) {
-    const last = warned[warned.length - 1];
-    issues.push(["servo_undervoltage", "warn", `${recentWarned.length} of the last ${recentMoves.length} servo moves (${warned.length} of ${moves.length} in total); ` +
-      `last ${ago(Date.now() / 1000 - last.time_unreliable)}, ${last.power_warnings} readings during that move`]);
-  }
+  // Power dips by cause, since the Pi started: the kernel's dip times against visits and servo moves,
+  // and the servo log's own record of a dip that began during a move.
+  const dipsNow = dipBreakdown(), bootS = h ? Date.now() / 1000 - h.uptime_seconds : 0;
+  const movesBoot = logs.servo.rows.filter((r) => r.goto && r.time_unreliable >= bootS);
+  const servoStarted = movesBoot.filter((r) => r.dip_started_during_move);
+  if (dipsNow && dipsNow.work)
+    issues.push(["work_undervoltage", "warn", `${dipsNow.visitsWithDip} of ${dipsNow.visits} visits since the Pi started had a dip while photographing and recognising`]);
+  if ((dipsNow && dipsNow.servo) || servoStarted.length)
+    issues.push(["servo_undervoltage", "warn", servoStarted.length ? `${servoStarted.length} of ${movesBoot.length} servo moves since the Pi started had a dip begin during the move`
+      : `${dipsNow.servo} kernel dips since the Pi started fell inside a servo move`]);
   const level = issues.some((i) => i[1] === "bad") ? "bad" : issues.length ? "warn" : "ok";
   lastLevel = level; lastIssues = issues;
   safely(renderAlerts);
@@ -666,7 +690,7 @@ $("poweroff").addEventListener("click", async () => {
 
 // Header: the open problems again, in a few words; a click opens the full explanation.
 const SHORT = { no_connection: "no connection", detector_down: "detector stopped", undervoltage_now: "power low now",
-  undervoltage_boot: "power dips since start", servo_undervoltage: "servo pulls power", servo_failure: "servo failed",
+  undervoltage_boot: "power dips since start", servo_undervoltage: "servo pulls power", work_undervoltage: "power dips while working", servo_failure: "servo failed",
   hot: "CPU hot", disk: "disk almost full", memory: "memory low", clock: "clock not synced" };
 let lastAlerts = "";
 function renderAlerts() {
@@ -688,7 +712,7 @@ function renderFun() {
   const n = current, rows = logs.detect.rows.filter((r) => r.decision);
   const today = dayKey(new Date().toISOString()), t = stats(rows.filter((r) => dayKey(r.wall_clock_unreliable) === today)), all = stats(rows);
   const moods = { ok: ["😎", "All chill", "The crow office is open and everything works."],
-                  warn: lastIssues.some((i) => i[0] === "servo_undervoltage" || i[0] === "undervoltage_boot")
+                  warn: lastIssues.some((i) => ["servo_undervoltage", "work_undervoltage", "undervoltage_boot"].includes(i[0]))
                     ? ["😬", "Working, but the power is too weak", "Crows are served, but the Pi's supply keeps dropping below its safe 4.63 V. That can corrupt the memory card or restart the Pi."]
                     : ["😬", lastIssues.length > 1 ? `Working, ${lastIssues.length} things to look at` : "Working, one thing to look at", "The details are below."],
                   bad: ["😱", "Houston, we have a crow-blem", (() => { const worst = lastIssues.find((i) => i[1] === "bad"); return worst ? FUN[worst[0]][1] : ""; })()] };
@@ -702,13 +726,9 @@ function renderFun() {
     : `✅ <b>Is the box working?</b> Yes — crows are served normally (${t.n} visit${t.n === 1 ? "" : "s"} today, ${t.servoFailed ? t.servoFailed + " failed strokes" : "no failed strokes"}).`;
   const dips = dipBreakdown();
   const moves = logs.servo.rows.filter((r) => r.goto), bootS = health ? Date.now() / 1000 - health.uptime_seconds : 0;
-  const movesBoot = moves.filter((m) => m.time_unreliable >= bootS), dippedBoot = movesBoot.filter((m) => m.power_warnings > 0);
-  const lastDipMove = dippedBoot[dippedBoot.length - 1];
   const facts = (id, evidence) => {
-    if (id === "servo_undervoltage" && movesBoot.length)
-      return `${dippedBoot.length} of ${movesBoot.length} servo moves since the Pi started had a dip${lastDipMove ? ` · last ${ago(Date.now() / 1000 - lastDipMove.time_unreliable)}` : ""}`;
     if (id === "undervoltage_boot")
-      return dips ? `${dips.total} short dips since the Pi started (${ago(health.uptime_seconds)}): ${dips.servo} during servo moves · ${dips.visit} during visits · ${dips.start} at start-up · ${dips.rest} at rest`
+      return dips ? `${dips.total} short dips since the Pi started (${ago(health.uptime_seconds)}): ${dips.work} while photographing/recognising · ${dips.servo} during servo moves · ${dips.start} at start-up · ${dips.rest} at rest`
         : `since the Pi started ${health ? ago(health.uptime_seconds) : ""} · loading the dip history…`;
     return evidence;
   };
@@ -909,7 +929,15 @@ function checkDetails(r, previous) {
     `<div>⏱️ decided ${r.trigger_to_decision_seconds != null ? r.trigger_to_decision_seconds.toFixed(1) + " s" : "–"} after the motion · ${scored.length} of ${r.photos_taken || 0} photos analysed</div>` +
     (shots ? `<table><tr><th>#</th><th>taken</th><th>model saw</th><th>cap</th><th>took</th></tr>${shots}</table>` : "") +
     `<div>🦾 ${stroke ? `${stroke} · ${r.servo.outcome === "DONE" ? "✅ done" : "⚠️ " + escapeHtml(r.servo.outcome)}` : "servo off"}` +
-    (moves.length ? ` · ${dips ? `⚡ ${dips} low-power readings during the stroke` : "🔋 no power dip during the stroke"}` : "") + `</div>` +
+    (moves.length ? " · " + (moves.some((m) => "dip_started_during_move" in m)
+      ? (moves.some((m) => m.dip_started_during_move) ? "⚡ a power dip began during the stroke" : dips ? "🔋 no new dip during the stroke (Pi still low from recognition)" : "🔋 no power dip during the stroke")
+      : (dips ? `${dips} low-power readings (old record: may be left over from recognition)` : "🔋 no power dip during the stroke")) : "") + `</div>` +
+    (() => {  // kernel dips between the motion and the decision (the dip list is read at most every 10 min)
+      if (!dipTimes) return "";
+      const end = Date.parse(r.wall_clock_unreliable), begin = end - (r.trigger_to_decision_seconds || 0) * 1000 - 500;
+      const n = dipTimes.filter((d) => d >= begin && d <= end + 300).length;
+      return Date.now() - end < 600000 && !n ? "" : `<div>${n ? "📸⚡ power dipped while photographing/recognising" : "📸 no power dip while photographing/recognising"}</div>`;
+    })() +
     `<div>${r.reward ? "🥜 reward released" : "🚫 no reward"}</div></details>`;
 }
 function renderChecks() {

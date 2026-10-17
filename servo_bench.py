@@ -120,7 +120,10 @@ class Servo:
         if start is None:
             raise RuntimeError("Servo pulses are off; position unknown")
         target = self.calibration[name]
-        warnings = 0
+        warnings = undervoltage = 0
+        # Flags already set before the move (for example left over from the CPU load of recognition)
+        # are not the servo's doing; only an undervoltage that starts during the move is.
+        before = self.check()
         started = time.monotonic()
         reached = start
         for position in ramp(start, target, self.step_us, self.step_seconds):
@@ -129,11 +132,16 @@ class Servo:
             self.pwm.pulse(position)
             reached = position
             time.sleep(self.step_seconds)
-            if self.check() & ACTIVE_POWER_FLAGS:
+            flags = self.check()
+            if flags & ACTIVE_POWER_FLAGS:
                 warnings += 1
+            if flags & 0x1:
+                undervoltage += 1
         record = {"time_unreliable": time.time(), "source": "detect", "goto": name, "from_us": start,
                   "reached_us": reached, "target_us": target, "seconds": round(time.monotonic() - started, 2),
-                  "power_warnings": warnings, "outcome": "REACHED" if reached == target else "STOPPED"}
+                  "power_warnings": warnings, "flags_before": hex(before), "undervoltage_readings": undervoltage,
+                  "dip_started_during_move": bool(undervoltage and not before & 0x1),
+                  "outcome": "REACHED" if reached == target else "STOPPED"}
         with self.log.open("a") as log:
             log.write(json.dumps(record) + "\n")
         if reached != target:
