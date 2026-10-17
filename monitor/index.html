@@ -616,8 +616,11 @@ function setMode(nerd) {
 $("crowBtn").addEventListener("click", () => { setMode(false); $("back").classList.remove("show"); });
 $("nerdBtn").addEventListener("click", () => setMode(true));
 
-// Crow-mode indicators link to their detailed data in Nerd mode.
-function goTo(id) {
+// Crow-mode indicators link to their detailed data in Nerd mode. Each jump is a browser history entry,
+// so the browser's Back button returns to Crow mode where the reader left it.
+let crowScroll = 0;
+function goTo(id, push = true) {
+  if (push) { crowScroll = window.scrollY; history.pushState({ jump: id, crowScroll }, "", "#" + id); }
   setMode(true);
   const target = $(id); if (!target) return;
   if (id === "power") { const load = $("loadErrors"); if (load && !$("errors").innerHTML) load.click(); }  // show the raw dip log too
@@ -631,7 +634,16 @@ $("fun").addEventListener("click", (event) => {
   const link = event.target.closest("a[data-goto]"); if (!link) return;
   event.preventDefault(); goTo(link.dataset.goto);
 });
-$("back").addEventListener("click", () => { setMode(false); $("back").classList.remove("show"); window.scrollTo({ top: 0, behavior: "smooth" }); });
+function backToCrow(scroll) {
+  setMode(false); $("back").classList.remove("show");
+  requestAnimationFrame(() => window.scrollTo({ top: scroll, behavior: "instant" }));
+}
+$("back").addEventListener("click", () => history.state && history.state.jump ? history.back() : backToCrow(0));
+window.addEventListener("popstate", (event) => {
+  if (event.state && event.state.jump) goTo(event.state.jump, false);  // browser Forward
+  else backToCrow(crowScroll);
+});
+if (location.hash) history.replaceState(null, "", location.pathname);  // a reload after a jump starts clean
 
 // The bear's silent Hamlet (Shakespeare, public domain), one line every 5 s while the page is visible.
 const LINES = [["To be, or not to be…", "Act III, scene 1"], ["Alas, poor Yorick!", "Act V, scene 1"],
