@@ -14,6 +14,22 @@ A plain web page for a phone or computer on the same network as the Pi: what the
 - **The browser does the work.** It loads the logs once, then fetches only new lines: every 5 s, slowing to 30 s while nothing happens, and not at all while the page is in the background. Statistics and exports are computed in the browser.
 - **Access:** local network only, with the token. The connection is plain HTTP, so use it on a trusted network (WPA2 Wi-Fi).
 
+## Signals at a glance
+
+Colours always come with text, so nothing depends on colour alone.
+
+| Signal | Meaning |
+|---|---|
+| Status bar: green "All systems normal" | Nothing below applies |
+| Status bar: amber "Attention" | Undervoltage since boot or during recent servo moves; clock not synchronised; CPU 70 °C or more; disk under 15 % free; under 100 MB memory available |
+| Status bar: red "Problem" | No connection to the Pi; detector not running; undervoltage now; servo failure in the last 20 visits; CPU 80 °C or more; disk under 5 % free |
+| Dot next to "Data as of" | Live data under 10 s old (green), under 60 s (amber), older (red) |
+| "Now" dots | Green: ready, servo at the centre. Blue, blinking: visit in progress, light on for photos, servo on its way. Amber, blinking: motion sensor HIGH. Amber: triggers being ignored after a visit. Red: detector not running |
+| Visit rows | YES/NO marker; score bar with the threshold as a black line (green bar = YES); a new visit is highlighted for 3 s; decision time over 8 s in amber; servo failure in red |
+| Per day | Bar for the YES rate |
+
+The status bar is computed in the browser from data the page already has; nothing extra is read on the Pi.
+
 ## What the numbers mean
 
 | Field | Meaning |

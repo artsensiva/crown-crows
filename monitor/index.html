@@ -5,8 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Crown Crows · Monitoring</title>
 <style>
-  :root { --ink: #1b1f23; --soft: #5a636b; --line: #d8dde1; --bad: #a3261b; --ok: #1d6b3a; --bg: #ffffff; }
-  @media (prefers-color-scheme: dark) { :root { --ink: #e6e9ec; --soft: #9aa4ad; --line: #3a4148; --bad: #ff8a80; --ok: #7bd88f; --bg: #15181b; } }
+  :root { --ink: #1b1f23; --soft: #5a636b; --line: #d8dde1; --bad: #b3261e; --ok: #1d7a43; --warn: #a15c00; --info: #1f5fa8; --bg: #ffffff;
+          --bad-bg: #fdecea; --ok-bg: #e8f5ec; --warn-bg: #fff4e0; --info-bg: #e8f0fb; --track: #e7eaed; }
+  @media (prefers-color-scheme: dark) { :root { --ink: #e6e9ec; --soft: #9aa4ad; --line: #3a4148; --bad: #ff8a80; --ok: #7bd88f; --warn: #ffc266; --info: #8ab8ff; --bg: #15181b;
+          --bad-bg: #3a1d1b; --ok-bg: #16301f; --warn-bg: #36290f; --info-bg: #172a40; --track: #2a3036; } }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
   main { max-width: 1100px; margin: 0 auto; padding: 16px; }
@@ -21,7 +23,23 @@
   th { font-weight: 600; color: var(--soft); }
   td.num, th.num { text-align: right; }
   .kv th { width: 45%; font-weight: 400; }
-  .bad { color: var(--bad); } .ok { color: var(--ok); }
+  .kv td { white-space: normal; }
+  .bad { color: var(--bad); } .ok { color: var(--ok); } .warn { color: var(--warn); } .info { color: var(--info); }
+  .banner { margin: 12px 0 0; padding: 8px 12px; border-radius: 4px; font-weight: 600; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+  .banner.ok { background: var(--ok-bg); color: var(--ok); } .banner.warn { background: var(--warn-bg); color: var(--warn); } .banner.bad { background: var(--bad-bg); color: var(--bad); }
+  .banner span { font-weight: 400; }
+  .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 7px; background: var(--soft); vertical-align: 0; }
+  .dot.ok { background: var(--ok); } .dot.warn { background: var(--warn); } .dot.bad { background: var(--bad); } .dot.info { background: var(--info); }
+  .dot.pulse { animation: pulse 1s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity: .25; } }
+  .chip { display: inline-block; padding: 0 7px; border-radius: 3px; font-size: 12px; font-weight: 600; line-height: 19px; }
+  .chip.yes { background: var(--ok-bg); color: var(--ok); } .chip.no { background: var(--track); color: var(--soft); }
+  .bar { display: inline-block; position: relative; width: 70px; height: 8px; background: var(--track); border-radius: 2px; margin-right: 8px; vertical-align: 1px; }
+  .bar i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 2px; background: var(--soft); }
+  .bar i.ok { background: var(--ok); } .bar b { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--ink); }
+  tr.new td { animation: flash 3s ease-out; }
+  @keyframes flash { from { background: var(--info-bg); } to { background: transparent; } }
+  @media (prefers-reduced-motion: reduce) { .dot.pulse, tr.new td { animation: none; } }
   .note { color: var(--soft); font-size: 12.5px; margin: 6px 0 0; }
   pre { white-space: pre-wrap; font-size: 12px; margin: 4px 0; }
   a { color: inherit; }
@@ -32,9 +50,11 @@
 <main>
 <header>
   <h1>Crown Crows · Monitoring</h1>
-  <span class="meta" id="status">Connecting…</span>
+  <span class="meta"><span class="dot" id="fresh"></span><span id="status">Connecting…</span></span>
   <span><button id="csv">Export CSV</button> <button id="json">Export JSON</button></span>
 </header>
+
+<div class="banner warn" id="banner">Connecting…</div>
 
 <h2>Now</h2>
 <table class="kv" id="now"></table>
@@ -94,7 +114,11 @@ async function syncLog(name) {
     const older = await api(`/api/log?name=${name}.1&from=0`);
     log.rows = parse(await older.text());
   }
-  log.rows.push(...parse(await response.text()));
+  const fresh = parse(await response.text());
+  if (name === "detect") {  // never count a visit twice
+    const known = new Set(log.rows.map((r) => `${r.boot}-${r.sequence}-${r.batch}`));
+    log.rows.push(...fresh.filter((r) => !known.has(`${r.boot}-${r.sequence}-${r.batch}`)));
+  } else log.rows.push(...fresh);
   log.inode = inode; log.offset = Number(response.headers.get("X-Next"));
   if (log.offset < size) return syncLog(name);  // more than one chunk
 }
@@ -106,6 +130,9 @@ const quantile = (values, q) => { if (!values.length) return null; const s = [..
 const sec = (v) => v == null ? "–" : v.toFixed(2) + " s";
 const best = (row) => (row.photos || []).reduce((top, p) => !top || p.cap_score > top.cap_score ? p : top, null);
 const escapeHtml = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+const dot = (cls, pulse) => `<span class="dot ${cls}${pulse ? " pulse" : ""}"></span>`;
+const bar = (value, threshold, passed) => `<span class="bar"><i class="${passed ? "ok" : ""}" style="width:${Math.max(0, Math.min(1, value)) * 100}%"></i>${threshold != null ? `<b style="left:${threshold * 100}%"></b>` : ""}</span>`;
+let seenVisits = null;
 const kv = (rows) => rows.map(([k, v, cls]) => `<tr><th>${k}</th><td class="${cls || ""}">${v}</td></tr>`).join("");
 
 function stats(rows) {
@@ -141,12 +168,12 @@ function render() {
     ["Detector service", `${h.service_state} since ${h.service_since || "–"}`, h.service_state === "active" ? "ok" : "bad"],
     ["Service restarts", h.service_restarts ?? "–"],
     ["Uptime", (h.uptime_seconds / 3600).toFixed(1) + " h"],
-    ["Clock synchronized", h.clock_synchronized ? "yes" : "no (times unverified)", h.clock_synchronized ? "" : "bad"],
-    ["Throttling flags", `${h.throttled || "–"}${h.throttled_meaning.length ? " · " + h.throttled_meaning.join(", ") : ""}`, h.throttled_meaning.some((m) => m.includes("now")) ? "bad" : ""],
-    ["CPU temperature", h.temperature_c != null ? h.temperature_c.toFixed(1) + " °C" : "–"],
+    ["Clock synchronized", h.clock_synchronized ? "yes" : "no (times unverified)", h.clock_synchronized ? "" : "warn"],
+    ["Throttling flags", `${h.throttled || "–"}${h.throttled_meaning.length ? " · " + h.throttled_meaning.join(", ") : ""}`, h.throttled_meaning.some((m) => m.includes("now")) ? "bad" : h.throttled_meaning.length ? "warn" : ""],
+    ["CPU temperature", h.temperature_c != null ? h.temperature_c.toFixed(1) + " °C" : "–", h.temperature_c >= 80 ? "bad" : h.temperature_c >= 70 ? "warn" : ""],
     ["CPU clock", h.arm_clock_mhz != null ? h.arm_clock_mhz + " MHz" : "–"],
     ["Memory available", `${h.memory_available_mb} of ${h.memory_total_mb} MB`],
-    ["Disk free", `${h.disk_free_gb} of ${h.disk_total_gb} GB`],
+    ["Disk free", `${h.disk_free_gb} of ${h.disk_total_gb} GB`, h.disk_free_gb < 0.05 * h.disk_total_gb ? "bad" : h.disk_free_gb < 0.15 * h.disk_total_gb ? "warn" : ""],
     ["Visits with photos kept", h.captures_visits],
     ["Power draw, battery, solar", "Not measured (requires instrumentation)"],
   ]) : kv([["Status", "Not loaded"]]);
@@ -159,16 +186,18 @@ function render() {
   }
   const dayRows = [...days.entries()].sort((a, b) => b[0].localeCompare(a[0])).slice(0, 60);
   $("days").innerHTML = `<tr><th>Date</th><th class="num">Visits</th><th class="num">YES</th><th class="num">NO</th><th class="num">YES rate</th><th class="num">Median decision</th></tr>` +
-    dayRows.map(([k, d]) => `<tr><td>${k}</td><td class="num">${d.n}</td><td class="num">${d.yes}</td><td class="num">${d.n - d.yes}</td><td class="num">${pct(d.yes, d.n)}</td><td class="num">${sec(quantile(d.lat, .5))}</td></tr>`).join("");
+    dayRows.map(([k, d]) => `<tr><td>${k}</td><td class="num">${d.n}</td><td class="num">${d.yes}</td><td class="num">${d.n - d.yes}</td><td class="num">${bar(d.n ? d.yes / d.n : 0, null, true)}${pct(d.yes, d.n)}</td><td class="num">${sec(quantile(d.lat, .5))}</td></tr>`).join("");
 
   $("visits").innerHTML = `<tr><th>Time</th><th>Visit</th><th>Decision</th><th class="num">Best score</th><th>Top label</th><th class="num">Photos</th><th class="num">Decision</th><th>Servo</th><th>Images</th></tr>` +
     rows.slice(-50).reverse().map((r) => {
       const b = best(r), servo = r.servo ? `${r.servo.stroke} · ${r.servo.outcome}` : "off";
+      const key = `${r.boot}-${r.sequence}`, fresh = seenVisits !== null && !seenVisits.has(key);
       const links = Array.from({ length: r.photos_taken || 0 }, (_, i) => `<a href="#" data-batch="${escapeHtml(r.batch)}" data-file="image-${String(i + 1).padStart(2, "0")}.jpg">${i + 1}</a>`).join(" ");
-      return `<tr><td>${fmtTime(r.wall_clock_unreliable)}</td><td>${escapeHtml(r.boot)}-${r.sequence}</td><td class="${r.decision === "YES" ? "ok" : ""}">${r.decision}</td>` +
-        `<td class="num">${b ? b.cap_score.toFixed(3) : "–"}</td><td>${b ? escapeHtml(b.top_label) : "–"}</td><td class="num">${r.photos_taken}</td>` +
-        `<td class="num">${sec(r.trigger_to_decision_seconds)}</td><td class="${r.servo && r.servo.outcome !== "DONE" ? "bad" : ""}">${escapeHtml(servo)}</td><td>${links}</td></tr>`;
+      return `<tr class="${fresh ? "new" : ""}"><td>${fmtTime(r.wall_clock_unreliable)}</td><td>${escapeHtml(r.boot)}-${r.sequence}</td><td><span class="chip ${r.decision === "YES" ? "yes" : "no"}">${r.decision}</span></td>` +
+        `<td class="num">${b ? bar(b.cap_score, r.accept, r.decision === "YES") + b.cap_score.toFixed(3) : "–"}</td><td>${b ? escapeHtml(b.top_label) : "–"}</td><td class="num">${r.photos_taken}</td>` +
+        `<td class="num ${r.trigger_to_decision_seconds > 8 ? "warn" : ""}">${sec(r.trigger_to_decision_seconds)}</td><td class="${r.servo && r.servo.outcome !== "DONE" ? "bad" : ""}">${escapeHtml(servo)}</td><td>${links}</td></tr>`;
     }).join("");
+  seenVisits = new Set(rows.map((r) => `${r.boot}-${r.sequence}`));
 
   const moves = logs.servo.rows.filter((r) => r.goto);
   const warned = moves.filter((r) => r.power_warnings > 0);
@@ -182,19 +211,46 @@ function render() {
 }
 
 let current = null, nowTimer = null, lastSeen = null, nowFailed = false;
+
+function assess() {
+  // Overall status from data already on the page; nothing extra is read.
+  const problems = [], warnings = [];
+  const h = health, n = current, rows = logs.detect.rows.filter((r) => r.decision);
+  if (failures || nowFailed) problems.push("no connection to the Pi");
+  if (n && n.state.startsWith("detector")) problems.push(n.state);
+  if (h) {
+    if (h.throttled_meaning.includes("undervoltage now")) problems.push("undervoltage now");
+    else if (h.throttled_meaning.includes("undervoltage since boot")) warnings.push("undervoltage since boot");
+    if (h.temperature_c >= 80) problems.push(`CPU ${h.temperature_c} °C`); else if (h.temperature_c >= 70) warnings.push(`CPU ${h.temperature_c} °C`);
+    if (h.disk_free_gb < 0.05 * h.disk_total_gb) problems.push("disk almost full"); else if (h.disk_free_gb < 0.15 * h.disk_total_gb) warnings.push("disk filling up");
+    if (h.memory_available_mb < 100) warnings.push("low memory");
+    if (!h.clock_synchronized) warnings.push("clock not synchronised");
+  }
+  if (rows.slice(-20).some((r) => r.servo && r.servo.outcome !== "DONE")) problems.push("servo failure in recent visits");
+  const recentMoves = logs.servo.rows.filter((r) => r.goto).slice(-20);
+  if (recentMoves.some((r) => r.power_warnings > 0)) warnings.push("undervoltage during recent servo moves");
+  const banner = $("banner");
+  banner.className = "banner " + (problems.length ? "bad" : warnings.length ? "warn" : "ok");
+  banner.innerHTML = problems.length ? `Problem <span>${escapeHtml([...problems, ...warnings].join(" · "))}</span>`
+    : warnings.length ? `Attention <span>${escapeHtml(warnings.join(" · "))}</span>` : "All systems normal";
+  const age = n ? Date.now() / 1000 - n.read_at : Infinity;
+  $("fresh").className = "dot " + (age < 10 ? "ok" : age < 60 ? "warn" : "bad");
+  $("fresh").title = n ? `live data ${Math.round(age)} s old` : "no live data";
+}
 const ago = (seconds) => seconds < 90 ? `${Math.round(seconds)} s ago` : seconds < 5400 ? `${Math.round(seconds / 60)} min ago` : `${(seconds / 3600).toFixed(1)} h ago`;
 function renderNow() {
   const n = current;
   if (!n) { $("now").innerHTML = kv([["State", nowFailed ? "Not available" : "Loading…"]]); return; }
   const v = n.last_visit, s = n.servo;
   const servoNames = { home: "centre (home)", dump_reward: "reward side", dump_only: "dump side", moving: "moving" };
+  const stateCls = n.state.startsWith("detector") ? "bad" : n.state.startsWith("ready") ? "ok" : n.state.startsWith("visit in progress") ? "info" : n.state.startsWith("starting") ? "info" : "warn";
   $("now").innerHTML = kv([
-    ["State", n.state, n.state.startsWith("detector") ? "bad" : n.state.startsWith("ready") ? "ok" : ""],
-    ["Motion sensor", n.motion == null ? "–" : n.motion ? "motion (HIGH)" : "no motion (LOW)"],
-    ["Light", n.light || "–"],
-    ["Servo", s ? `${servoNames[s.position] || s.position} · ${s.pulse_us} µs · ${s.holding ? "holding" : "pulses off"}` : "–"],
+    ["State", dot(stateCls, stateCls === "info") + n.state, stateCls === "info" ? "" : stateCls],
+    ["Motion sensor", n.motion == null ? "–" : n.motion ? dot("warn", true) + "motion (HIGH)" : dot("") + "no motion (LOW)"],
+    ["Light", n.light ? (n.light === "off" ? dot("") : dot("info", n.light === "white")) + n.light : "–"],
+    ["Servo", s ? dot(s.position === "home" ? "ok" : "info", s.position !== "home") + `${servoNames[s.position] || s.position} · ${s.pulse_us} µs · ${s.holding ? "holding" : "pulses off"}` : "–"],
     ["Last visit", v ? `${v.decision} · ${ago(n.read_at - new Date(v.wall_clock_unreliable).getTime() / 1000)} (${v.boot}-${v.sequence})` : "–"],
-    ["CPU load (1 min)", n.load_1min.toFixed(2) + " of 4 cores"],
+    ["CPU load (1 min)", n.load_1min.toFixed(2) + " of 4 cores", n.load_1min > 3.5 ? "warn" : ""],
   ]);
 }
 async function pollNow() {
@@ -207,17 +263,22 @@ async function pollNow() {
     lastSeen = key;
     nowFailed = false;
   } catch (error) { current = null; nowFailed = true; }
-  renderNow();
+  renderNow(); assess();
   nowTimer = setTimeout(pollNow, 3000);
 }
 
-async function refresh(withHealth) {
+let syncing = Promise.resolve();
+function refresh(withHealth) {  // one update at a time: overlapping updates would read the same lines twice
+  syncing = syncing.then(() => doRefresh(withHealth));
+  return syncing;
+}
+async function doRefresh(withHealth) {
   try {
     await syncLog("detect"); await syncLog("servo");
     if (withHealth) health = await (await api("/api/health")).json();
     lastSync = new Date(); failures = 0;
   } catch (error) { failures++; $("status").textContent = error.message; }
-  render();
+  render(); assess();
 }
 
 let timer = null, idle = 0;
