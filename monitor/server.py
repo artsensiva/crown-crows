@@ -12,7 +12,9 @@ access from the internet a password can be set (python monitor/server.py
 the login for a growing time (1 min, doubling, at most 1 h), kept in a file so
 the lock survives the server's idle exit.
 
-One action exists besides reading: POST /api/poweroff (token and the word
+Two actions exist besides reading, both from the home network only: POST /api/accept sets the
+recognition threshold in config/local.accept.json, which the detector reads at
+the start of every visit; and POST /api/poweroff (token and the word
 "poweroff" required) shuts the Pi down, for work on the hardware. It needs the
 polkit rule from deploy/50-crown-crows-poweroff.rules.
 """
@@ -39,6 +41,7 @@ LOGS = {"detect": ROOT / "logs/detect.jsonl", "detect.1": ROOT / "logs/detect.js
 CAPTURES = ROOT / "captures"
 TOKEN_FILE = ROOT / "config/local.monitor.json"
 LOCK_FILE = ROOT / "config/local.monitor-lock.json"
+ACCEPT_FILE = ROOT / "config/local.accept.json"
 PBKDF2_ROUNDS = 60_000  # about 0.3 s per attempt on a Pi 3
 IDLE_SECONDS = 120
 MAX_CHUNK = 4_000_000
@@ -193,6 +196,14 @@ def errors():
     return {"service": lines(service)[-50:], "kernel_undervoltage": lines(kernel)[-500:]}
 
 
+def accept_setting():
+    # The threshold set from the dashboard, or None when the service's --accept applies.
+    try:
+        return float(json.loads(ACCEPT_FILE.read_text())["accept"])
+    except (OSError, ValueError, KeyError, TypeError):
+        return None
+
+
 def can_power_off():
     # logind's answer for this user: "yes" only when the polkit rule allows it without a password.
     out = run(["busctl", "--system", "call", "org.freedesktop.login1", "/org/freedesktop/login1",
@@ -237,7 +248,7 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         self.server.last_request = time.monotonic()
         path = urlparse(self.path).path
-        if path not in ("/api/login", "/api/poweroff"):
+        if path not in ("/api/login", "/api/poweroff", "/api/accept"):
             return self.fail(404, "not found")
         length = int(self.headers.get("Content-Length") or 0)
         if not 0 < length <= 1024:
@@ -247,6 +258,18 @@ class Handler(BaseHTTPRequestHandler):
             password = body.get("password", "")
         except (ValueError, AttributeError):
             return self.fail(400, "bad request")
+        if path == "/api/accept":
+            if not self.server.token or not hmac.compare_digest(self.headers.get("X-Token", ""), self.server.token):
+                return self.fail(401, "token required")
+            if not self.from_home():
+                return self.fail(403, "the threshold can be changed only from the home network")
+            value = body.get("accept")
+            if not isinstance(value, (int, float)) or not 0.3 <= value <= 0.99:
+                return self.fail(400, "threshold must be between 0.30 and 0.99")
+            temporary = ACCEPT_FILE.with_suffix(".tmp")
+            temporary.write_text(json.dumps({"accept": round(float(value), 2), "set_at": time.time()}) + "\n")
+            temporary.replace(ACCEPT_FILE)  # atomic: the detector never reads half a file
+            return self.send(200, json.dumps({"accept": round(float(value), 2)}).encode())
         if path == "/api/poweroff":
             if not self.server.token or not hmac.compare_digest(self.headers.get("X-Token", ""), self.server.token):
                 return self.fail(401, "token required")
@@ -317,7 +340,7 @@ class Handler(BaseHTTPRequestHandler):
                     self.server.health_cache, self.server.health_at = health(), now
                 return self.send(200, json.dumps(self.server.health_cache).encode())
             if url.path == "/api/now":
-                return self.send(200, json.dumps(dict(now_reading(self.server), power_off_allowed=self.from_home())).encode())
+                return self.send(200, json.dumps(dict(now_reading(self.server), power_off_allowed=self.from_home(), from_home=self.from_home(), accept_setting=accept_setting())).encode())
             if url.path == "/api/errors":
                 return self.send(200, json.dumps(errors()).encode())
             return self.fail(404, "not found")

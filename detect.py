@@ -157,6 +157,17 @@ def open_servo(options):
     return servo
 
 
+def current_accept(options):
+    # The threshold can be changed from the dashboard (config/local.accept.json, written by
+    # monitor/server.py); it is read at the start of every visit. Without the file, or with an
+    # invalid value, --accept applies.
+    try:
+        value = float(json.loads(options.accept_file.read_text())["accept"])
+        return value if 0.3 <= value <= 0.99 else options.accept
+    except (OSError, ValueError, KeyError, TypeError):
+        return options.accept
+
+
 def visit(events, boot, triggered, lights, capture, classify, journal, options, stop, servo):
     # Owner's logic (2026-10-14): after the trigger wait --first-delay, then
     # with the light on take --photos photos --photo-interval apart. Each
@@ -170,6 +181,7 @@ def visit(events, boot, triggered, lights, capture, classify, journal, options, 
     batch = options.output / f"{boot}-{events:04d}-{os.getpid()}"
     batch.mkdir(parents=True)
     results = []
+    accept = current_accept(options)
     yes = threading.Event()
     jobs = queue.Queue()
 
@@ -187,7 +199,7 @@ def visit(events, boot, triggered, lights, capture, classify, journal, options, 
             results.append({"photo": index, "cap_score": round(score, 4), "top_label": top,
                             "analysis_seconds": round(finished - started, 3),
                             "seconds_after_trigger": round(finished - triggered, 3)})
-            if score >= options.accept:
+            if score >= accept:
                 yes.set()
 
     worker = threading.Thread(target=analyse, daemon=True)
@@ -220,7 +232,7 @@ def visit(events, boot, triggered, lights, capture, classify, journal, options, 
         "batch": batch.name,
         "photos_taken": taken,
         "photos": sorted(results, key=lambda result: result["photo"]),
-        "accept": options.accept,
+        "accept": accept,
         "decision": decision,
         "trigger_to_decision_seconds": round(decided - triggered, 3),
         "tray": options.tray,
@@ -351,6 +363,8 @@ def parse_options():
     parser.add_argument("--model-sha256", required=True)
     parser.add_argument("--tray", nargs=4, type=float, metavar=("X0", "Y0", "X1", "Y1"),
                         help="Fixed tray area as fractions of the photo; default: this unit's --tray-file")
+    parser.add_argument("--accept-file", type=Path, default=home / "config/local.accept.json",
+                        help="Threshold set from the dashboard; overrides --accept while present")
     parser.add_argument("--tray-file", type=Path, default=home / "config/local.tray.json",
                         help='Per-unit tray area, {"tray": [X0, Y0, X1, Y1]}, set once (docs/DEPLOY.md); '
                              "without it the whole photo is analysed")

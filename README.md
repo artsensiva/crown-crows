@@ -184,7 +184,7 @@ cd ~/crown-crows && .venv-detector/bin/python -B selftest.py    # self-test (sto
 cd ~/crown-crows && python3 -B servo_bench.py --status          # servo state and calibration
 ```
 
-Production settings are in [`deploy/crown-crows-detect.service`](deploy/crown-crows-detect.service): `--accept 0.6 --servo full --dump-seconds 0.5 --ignore-seconds 25`; per-unit settings (servo positions, tray area) are in `config/`. The runtime needs four Python packages (onnxruntime, OpenCV headless, numpy, Pillow) plus the system's GPIO libraries. Visit photos are capped at the last 1000 visits (about 1.5 GB), logs rotate at 20 MB, the system log is capped at 50 MB.
+Production settings are in [`deploy/crown-crows-detect.service`](deploy/crown-crows-detect.service): `--accept 0.6 --servo full --dump-seconds 0.5 --ignore-seconds 25`; per-unit settings (servo positions, tray area, a threshold set from the dashboard on the home network) are in `config/`. The runtime needs four Python packages (onnxruntime, OpenCV headless, numpy, Pillow) plus the system's GPIO libraries. Visit photos are capped at the last 1000 visits (about 1.5 GB), logs rotate at 20 MB, the system log is capped at 50 MB.
 
 ## Repository layout
 

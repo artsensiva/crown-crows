@@ -15,7 +15,7 @@ The complete engine runs on the Pi itself and needs no network in operation. Net
 | Tray area of this unit | `~/crown-crows/config/local.tray.json` | no: per unit, see step 6 |
 | System settings: hardware PWM (`dtoverlay=pwm,pin=18,func=2`), lingering, persistent log | `/boot/firmware/config.txt`, systemd | set by the installer |
 
-Production settings live in `deploy/crown-crows-detect.service`: `--accept 0.6 --servo full --dump-seconds 0.5 --ignore-seconds 25`. Per-unit settings (servo positions, tray area) live in `config/`, which updates never touch. The service file uses `%h` (the user's home folder), so any user name works as long as the project is in `~/crown-crows`.
+Production settings live in `deploy/crown-crows-detect.service`: `--accept 0.6 --servo full --dump-seconds 0.5 --ignore-seconds 25`. Per-unit settings (servo positions, tray area, a threshold set from the dashboard) live in `config/`, which updates never touch. The service file uses `%h` (the user's home folder), so any user name works as long as the project is in `~/crown-crows`.
 
 ## Fresh installation
 

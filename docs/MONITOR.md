@@ -103,3 +103,11 @@ Measured on 2026-10-17 after fitting a 2200 µF capacitor at the servo, over 9 v
 **Levels (2026-10-17):** short power dips are shown as notes (ℹ️, grey chips, the page stays 😎 "All works · the power has little headroom"), because in all the logs they never caused a crash, a restart or a failed stroke. Orange or red only for: a dip lasting 30 s or more, automatic detector restarts, a failed servo stroke, no connection, the detector not running, heat, a full disk or low memory.
 
 **Test with 3 cores (7 visits, 2026-10-17):** 0.95 s per photo, YES in 2.6 s, NO in 6.5 s, no dip while recognising. No dip at all in this test, including the 14 servo moves (with 2 cores every tilt to the reward side had one); that difference cannot come from the core count and is unexplained so far. 3 cores are now the default.
+
+## 🎯 Threshold from the dashboard (home network only)
+
+Under 🔍 Last checks (both modes): a slider for the recognition threshold (0.30–0.99) with a live preview from the logged visits: a scale with every visit's best score (green = was YES, grey = was NO, outlined = would flip), how many YES would become NO (an estimate: a YES stopped at the first photo above the old threshold) and how many NO would become YES (exact: a NO analysed all five photos), and what the last visit would have been. **Save** writes `config/local.accept.json`; the detector reads it at the start of every visit (no restart), and each visit record keeps the threshold it used. Without the file, `--accept` from the service applies.
+
+Saving works only from the home network (as Power off); from the internet the slider is for trying values only.
+
+Trade-off on the 126 reviewed visits of 2026-10-17 (84 caps, 9 accepted non-caps): 0.70 refuses 2 caps and still accepts 8 non-caps; 0.80: 4 caps refused, 6 non-caps accepted; 0.85: 11 / 5; 0.90: 14 / 5; 0.95: 17 / 1.
