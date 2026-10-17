@@ -402,7 +402,7 @@ const GUIDE = {
     why: "The servo is the biggest single trigger of the Pi's power dips. The strokes still complete, but each dip slows the Pi briefly and is a small risk for the SD card.",
     cause: "The servo is powered from the Pi's 5 V pin (by design on this box). When it starts moving it draws current peaks of up to 0.6–0.75 A for a fraction of a second.",
     steps: [
-      "Fit an electrolytic capacitor of 1000–2200 µF, 10 V or more, across the servo's + and − wires, as close to the servo as possible (mind the polarity). It supplies the current peaks instead of the Pi.",
+      "Fit a low-ESR electrolytic capacitor of 1000–2200 µF, 16 V (10 V minimum), across the servo's + and − wires, as close to the servo as possible (mind the polarity). It supplies the current peaks instead of the Pi.",
       "Keep the servo's power wires short and off any breadboard.",
       "Check: new moves should show no undervoltage readings; then reboot once to clear the \"since boot\" flag.",
     ],
@@ -430,7 +430,7 @@ const FUN = {
   no_connection: ["📡", "Can't reach the crow office", "Check the Pi has power and you're on the same Wi-Fi."],
   detector_down: ["😴", "The detector is napping", "It usually wakes up by itself within a minute."],
   undervoltage_now: ["🪫", "The Pi is short of power right now", "Don't unplug anything; the capacitor at the servo is the fix."],
-  undervoltage_boot: ["🧠", "The Pi had short power dips since it started", "Goes away with one reboot after the capacitor is fitted."],
+  undervoltage_boot: ["🧠", "The Pi's power dipped below safe since it started", "Fit the capacitor, then reboot once to clear this record. If dips still appear with the servo standing still, the capacitor was not enough."],
   servo_undervoltage: ["⚡🍝", "The servo briefly pulls the Pi's power down when it moves", "A 1000–2200 µF capacitor at the servo (on your list)."],
   servo_failure: ["🦾", "The tray arm got stuck", "Check nothing blocks the tray."],
   clock: ["🕰️", "The Pi lost track of time", "Connect it to the network once, or add a clock module."],
@@ -532,7 +532,9 @@ function renderFun() {
   const n = current, rows = logs.detect.rows.filter((r) => r.decision);
   const today = dayKey(new Date().toISOString()), t = stats(rows.filter((r) => dayKey(r.wall_clock_unreliable) === today)), all = stats(rows);
   const moods = { ok: ["😎", "All chill", "The crow office is open and everything works."],
-                  warn: ["😬", lastIssues.length > 1 ? `Mostly fine, ${lastIssues.length} things to look at` : "Mostly fine, one thing to look at", "Nothing is broken; the details are below."],
+                  warn: lastIssues.some((i) => i[0] === "servo_undervoltage" || i[0] === "undervoltage_boot")
+                    ? ["😬", "Working, but the power is too weak", "Crows are served, but the Pi's supply keeps dropping below its safe 4.63 V. That can corrupt the memory card or restart the Pi."]
+                    : ["😬", lastIssues.length > 1 ? `Working, ${lastIssues.length} things to look at` : "Working, one thing to look at", "The details are below."],
                   bad: ["😱", "Houston, we have a crow-blem", (() => { const worst = lastIssues.find((i) => i[1] === "bad"); return worst ? FUN[worst[0]][1] : ""; })()] };
   const [emoji, title, sub] = n || lastIssues.length ? moods[lastLevel] : ["🐦", "Connecting to the crow office…", "one sec"];
   $("mood").className = "card mood " + (n || lastIssues.length ? lastLevel : "warn");
