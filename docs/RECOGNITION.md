@@ -16,7 +16,7 @@ Each description is used as "a photo of a …". A photo is YES when its `cap_sco
 - **Weights:** `timm/MobileCLIP2-S0-OpenCLIP`, revision `095906d28bf54d7584dc411e8ffe448f34289e05`, `open_clip_model.safetensors`, SHA-256 `ab91a1a0c4330d6b1913e24d5035dfdea15423316aaec649610c6b1c6ddd0e95`. Licensed under Apple's research licence (`apple-amlr`), which restricts their use; they are not part of this repository.
 - **Export:** `deploy/build_model.sh` downloads the weights and runs `export_model.py`, which writes one ONNX file (`model.onnx`, 46 MB) with the image encoder and the description embeddings built in, plus the description list in its metadata. On the Pi only onnxruntime is needed: the model is ready about 1.5 s after start, instead of about 90 s with PyTorch. The detector refuses a model file whose description list differs from `recognition.py`.
 - **Preprocessing (essential):** the analysed area is padded to a square with white, resized bilinearly to 256 × 256, values 0–1, **no mean/std normalisation**. Loaded from a local file, open_clip silently uses OpenAI CLIP's normalisation instead, which ruins the scores; `export_model.py` and `recognition.py` therefore set the preprocessing explicitly.
-- **Speed on the Pi 3:** with the detector stopped, 0.76 s per analysis on 4 threads, 0.89 s on 3, 1.22 s on 2, 2.20 s on 1. In real visits (camera and light working at the same time) 4 threads took about 2 s because the supply sagged and the Pi slowed its CPU; production uses 3 threads: about 0.95 s (2026-10-17).
+- **Speed on the Pi 3:** with the detector stopped, 0.69 s per analysis on 4 threads, 0.85 s on 3, 1.18 s on 2, 2.18 s on 1 (100 visit photos, see [the thread benchmark](#thread-benchmark-100-visit-photos-2026-10-17)). In real visits (camera and light working at the same time) 4 threads took about 2 s because the supply sagged and the Pi slowed its CPU; production uses 3 threads: about 0.95 s (2026-10-17).
 
 ## Bench session, 2026-10-15
 
@@ -70,3 +70,18 @@ Owner's decisions: coin, button and washer removed from the descriptions; thresh
 All 126 visits then kept on the Pi were checked by eye. 113 decisions were right: 84 caps and lids accepted (all that were in view), 29 other items rejected. 9 non-caps were accepted, all round or dome-shaped seen from above: a plug-in night light (twice, 0.92 and 0.95), a metal tea-infuser ball (three times, 0.73–0.82), a roll of tape (0.98), a small red plastic cup (0.94), a capacitor standing on its end (0.92) and a cork disc (0.64). Two caps were missed because they lay almost outside the camera view. A coin was accepted, as allowed (coins need not be rejected).
 
 The scores of these items (0.64–0.98) overlap those of real caps (lowest 0.63, 0.63, 0.75, 0.78), so no threshold separates them. The owner decided not to add further checks or training for this: the zero-shot model accepts some round non-cap objects, and that is acceptable for now. A model trained on the box's own photos remains the option if it ever matters ([ROADMAP](ROADMAP.md)).
+
+## Thread benchmark, 100 visit photos, 2026-10-17
+
+The same 100 photos from past visits (64 YES, 36 NO), each reduced to its tray area, run through the model with 4, 3, 2 and 1 threads on the Pi, with the detector stopped, 20 s pause between modes. Camera and light were not running.
+
+| Threads | Per photo (median) | Slowest 5 % | 100 photos | CPU time | Photos with a low-power or capped-CPU flag | New dips | Max temperature |
+|---|---|---|---|---|---|---|---|
+| 4 | 0.69 s | 1.25 s (uneven) | 79 s | 313 core-s | 13 of 100 | 1 | 65.5 °C |
+| **3 (production)** | **0.85 s** | **0.85 s** | **86 s** | **256 core-s** | **0** | **0** | **65.0 °C** |
+| 2 | 1.18 s | 1.18 s | 118 s | 236 core-s | 0 | 0 | 59.1 °C |
+| 1 | 2.18 s | 2.18 s | 218 s | 218 core-s | 0 | 0 | 50.5 °C |
+
+**Energy** is estimated, not measured (the Pi 3 has no current sensor): at about 0.5 W per busy core, one photo costs about 1.6 J on 4 threads, 1.3 J on 3, 1.2 J on 2 and 1.1 J on 1. Between 3 threads and 1 that is about 1 J per visit, about 0.03 Wh a day at 100 visits, against roughly 34 Wh a day for the idle Pi *(est.)*: about 0.1 %. The thread count does not matter for battery life.
+
+**Decision: 3 threads stay.** Four threads are the fastest on average but push the supply to its limit even without camera and light (13 % of photos flagged, one dip, uneven times; in real visits with camera and light about 2 s per photo). Three threads are only 0.16 s slower, steady, and without flags or dips. Two and one thread are slower and save practically nothing.

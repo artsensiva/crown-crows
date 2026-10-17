@@ -86,3 +86,7 @@ The owner removed the 2200 µF capacitor at the servo. Over 8 visits without it 
 28 more visits reviewed by eye (threshold 0.85): all 6 real caps accepted at 0.99–1.00; 15 of 20 other objects rejected; the 5 accepted ones were again round objects seen end-on (a nail-polish bottle standing upright, a round toothpick container, the night light), scored 0.97–1.00, beyond any threshold. The owner is satisfied with how real caps are handled.
 
 Idle load measured on the Pi: 0.5 % of the four cores in total; Tailscale is now the largest single consumer (0.73 % of one core). Energy is dominated by the idle hardware, not the software; the plan for battery operation starts with a USB power meter ([POWER](POWER.md#measured-idle-load-2026-10-17)).
+
+## 2026-10-17: Thread benchmark on 100 visit photos
+
+On the Pi, the same 100 past visit photos with 4, 3, 2 and 1 recognition threads: 0.69, 0.85, 1.18 and 2.18 s per photo. Four threads flagged low power or a capped CPU on 13 % of photos and caused one dip even without camera and light; the others none. The estimated energy differs by about 0.1 % of the daily total between modes, so speed and stability decide: 3 threads stay ([RECOGNITION](RECOGNITION.md#thread-benchmark-100-visit-photos-2026-10-17)).

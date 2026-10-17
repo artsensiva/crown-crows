@@ -7,7 +7,7 @@ Goal: Crown Crows runs for days on a power bank (later with solar charging), wit
 | Consumer | When | Power |
 |---|---|---|
 | Raspberry Pi 3 Model B, idle | always | ≈ 1.3–1.4 W (≈ 260 mA at 5 V) *(est.)* ([linuxhint](https://linuxhint.com/raspberry_pi_3_power_requirements/); [pidramble](https://pidramble.com/node/27)) |
-| Recognition (3 CPU cores) | ≈ 1–5 s per visit | + ≈ 1–2 W *(est.)* |
+| Recognition (3 CPU cores) | ≈ 1–5 s per visit | + ≈ 1.5 W *(est.)*; about 1.3 J per photo, so the thread count changes the daily energy by about 0.1 % ([RECOGNITION](RECOGNITION.md#thread-benchmark-100-visit-photos-2026-10-17)) |
 | Tailscale (only if access from the internet is set up) | always | small CPU use (measured below), but it keeps the Wi-Fi radio active *(cost to be measured)* |
 | Camera module | ≈ 0.6 s per photo, up to 5 photos per visit | + ≈ 0.25 W *(est.)* |
 | Servo stroke | ≈ 1.2 s per visit | peaks up to 0.6–0.75 A (manufacturer maximum) |
