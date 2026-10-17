@@ -79,3 +79,9 @@ Free, no domain and no router changes: [Tailscale Funnel](https://tailscale.com/
 `cd ~/crown-crows && python3 -c 'import json, secrets, pathlib; p = pathlib.Path("config/local.monitor.json"); s = json.loads(p.read_text()); s["token"] = secrets.token_urlsafe(18); p.write_text(json.dumps(s, indent=2))'`
 
 **Privacy and load:** the page and API carry `noindex` so search engines do not list them. Everyone with the password can see the photos; the camera looks at the tray, but a hand may appear in a photo. Tailscale itself uses about 30–40 MB of memory; the dashboard server still only runs while someone has the page open.
+
+## Power off button
+
+**⏻ Power off** in the header (both modes) shuts the Pi down cleanly, for example before work on the wiring. It asks for confirmation (and warns if a visit is in progress), then shows what to do: wait until the green light stops blinking (about 20 s), then unplug. The page notices when the Pi stops answering. It cannot switch the Pi on again: plug the power back in, and the detector and the dashboard start by themselves.
+
+This is the dashboard's only action besides reading. `POST /api/poweroff` needs the access token and the word `poweroff`, and works only with the polkit rule `deploy/50-crown-crows-poweroff.rules`, which lets this one user power off without a password and allows nothing else. `deploy/install.sh` installs it (one sudo prompt); without it the button reports "not allowed".

@@ -138,6 +138,8 @@
   .login h2 { margin: 0; } .login img { width: 72px; height: 72px; margin: 0 auto; border-radius: 16px; }
   .login input[type=password] { font-size: 16px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); color: var(--ink); }
   .login button { font-size: 16px; padding: 10px; border-radius: 10px; }
+  button.danger { border-color: var(--bad); color: var(--bad); }
+  .off-card { width: min(380px, 100%); text-align: center; background: var(--bg); box-shadow: 0 6px 30px rgba(0,0,0,.15); }
   .hmeta { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
   .alerts { font-size: 12px; color: var(--soft); text-decoration: none; display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; }
   .alerts span { border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; white-space: nowrap; }
@@ -201,6 +203,13 @@
     <p class="meta" id="loginMsg" role="alert"></p>
   </form>
 </div>
+<div class="login" id="offScreen" hidden>
+  <div class="card off-card">
+    <div style="font-size:44px">😴</div>
+    <h2 id="offTitle">The Pi is shutting down…</h2>
+    <p id="offText">Wait until the green light on the Pi stops blinking (about 20 s), then unplug it.<br>To switch it on again, plug the power back in: the detector and this page start by themselves (about 2 minutes).</p>
+  </div>
+</div>
 <header>
   <h1><img id="logo" alt="" src="data:,">Crown Crows · Monitoring</h1>
   <span class="hmeta"><span class="meta"><span class="dot" id="fresh"></span><span id="status">Connecting…</span></span>
@@ -236,7 +245,7 @@
     </svg>
     <div class="say" id="say">To be, or not to be…<small>Hamlet, performed silently by Bear</small></div>
   </div>
-  <span><button id="csv">Export CSV</button> <button id="json">Export JSON</button></span>
+  <span><button id="csv">Export CSV</button> <button id="json">Export JSON</button> <button id="poweroff" class="danger" title="Shut the Pi down, e.g. for work on the hardware">⏻ Power off</button></span>
 </header>
 <div class="controls">
 <div class="switch" role="group" aria-label="View">
@@ -633,6 +642,27 @@ for (const box of ["issues", "mood"]) $(box).addEventListener("toggle", (event) 
   if (event.target.open) openIssues.add(id); else openIssues.delete(id);
   lastIssuesHtml = ""; lastFunIssuesHtml = "";
 }, true);
+
+// Power off: asks twice in words, then shows what to do next. The Pi cannot be switched on from here.
+$("poweroff").addEventListener("click", async () => {
+  const busy = current && current.trigger && current.trigger.phase === "visit";
+  if (!confirm((busy ? "A visit is in progress right now.\n\n" : "") +
+      "Power off the Pi?\n\nCrows will not be served until the power is plugged in again. It cannot be switched on from this page.")) return;
+  try {
+    const response = await fetch("/api/poweroff", { method: "POST", cache: "no-store",
+      headers: { "Content-Type": "application/json", "X-Token": token }, body: JSON.stringify({ confirm: "poweroff" }) });
+    const answer = await response.json().catch(() => ({}));
+    if (!response.ok) return alert("⏻ Not powered off: " + (answer.error || "HTTP " + response.status));
+    clearTimeout(timer); clearTimeout(nowTimer); $("offScreen").hidden = false;
+    // Confirm that it went down: the page stops answering.
+    const started = Date.now();
+    const watch = setInterval(async () => {
+      try { await fetch("/", { cache: "no-store" }); }
+      catch (error) { clearInterval(watch); $("offTitle").textContent = "The Pi is off 💤"; $("offText").innerHTML =
+        `It stopped answering after ${Math.round((Date.now() - started) / 1000)} s. When the green light has stopped blinking, it is safe to unplug.<br>To switch it on again, plug the power back in.`; }
+    }, 2000);
+  } catch (error) { alert("⏻ The Pi did not answer: " + error.message); }
+});
 
 // Header: the open problems again, in a few words; a click opens the full explanation.
 const SHORT = { no_connection: "no connection", detector_down: "detector stopped", undervoltage_now: "power low now",

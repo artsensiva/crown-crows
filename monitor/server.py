@@ -11,6 +11,10 @@ access from the internet a password can be set (python monitor/server.py
 --set-password); /api/login exchanges it for the token. Wrong passwords lock
 the login for a growing time (1 min, doubling, at most 1 h), kept in a file so
 the lock survives the server's idle exit.
+
+One action exists besides reading: POST /api/poweroff (token and the word
+"poweroff" required) shuts the Pi down, for work on the hardware. It needs the
+polkit rule from deploy/50-crown-crows-poweroff.rules.
 """
 import getpass
 import hashlib
@@ -188,6 +192,13 @@ def errors():
     return {"service": lines(service)[-50:], "kernel_undervoltage": lines(kernel)[-500:]}
 
 
+def can_power_off():
+    # logind's answer for this user: "yes" only when the polkit rule allows it without a password.
+    out = run(["busctl", "--system", "call", "org.freedesktop.login1", "/org/freedesktop/login1",
+               "org.freedesktop.login1.Manager", "CanPowerOff"])
+    return out.strip().partition(" ")[2].strip('"')
+
+
 class Handler(BaseHTTPRequestHandler):
     server_version = "crown-crows-monitor"
 
@@ -212,15 +223,27 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         self.server.last_request = time.monotonic()
-        if urlparse(self.path).path != "/api/login":
+        path = urlparse(self.path).path
+        if path not in ("/api/login", "/api/poweroff"):
             return self.fail(404, "not found")
         length = int(self.headers.get("Content-Length") or 0)
         if not 0 < length <= 1024:
             return self.fail(400, "bad request")
         try:
-            password = json.loads(self.rfile.read(length)).get("password", "")
+            body = json.loads(self.rfile.read(length))
+            password = body.get("password", "")
         except (ValueError, AttributeError):
             return self.fail(400, "bad request")
+        if path == "/api/poweroff":
+            if not self.server.token or not hmac.compare_digest(self.headers.get("X-Token", ""), self.server.token):
+                return self.fail(401, "token required")
+            if body.get("confirm") != "poweroff":
+                return self.fail(400, "confirmation missing")
+            if can_power_off() != "yes":
+                return self.fail(403, "not allowed: install the polkit rule (deploy/install.sh)")
+            # Answer first, then power off: the detector is stopped cleanly by systemd.
+            subprocess.Popen(["sh", "-c", "sleep 2; systemctl poweroff --no-ask-password"], start_new_session=True)
+            return self.send(202, json.dumps({"powering_off": True}).encode())
         lock = json.loads(LOCK_FILE.read_text()) if LOCK_FILE.exists() else {"failures": 0, "until": 0}
         wait = lock["until"] - time.time()
         if wait > 0:

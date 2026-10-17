@@ -77,6 +77,12 @@ if [ "$(loginctl show-user "$USER" -p Linger --value 2>/dev/null)" = yes ]; then
 else
     sudo loginctl enable-linger "$USER"
 fi
+# The dashboard's "Power off" button: allow this user (only) to power off without a password.
+RULE=/etc/polkit-1/rules.d/50-crown-crows-poweroff.rules
+if [ -d /etc/polkit-1/rules.d ] && ! busctl --system call org.freedesktop.login1 /org/freedesktop/login1 \
+        org.freedesktop.login1.Manager CanPowerOff 2>/dev/null | grep -q '"yes"'; then
+    sed "s/USER_NAME/$USER/" deploy/50-crown-crows-poweroff.rules | sudo tee "$RULE" >/dev/null
+fi
 mkdir -p "$HOME/.config/systemd/user" logs captures config
 cp deploy/crown-crows-detect.service "$HOME/.config/systemd/user/"
 # Monitoring dashboard (docs/MONITOR.md): socket-activated, read-only; a

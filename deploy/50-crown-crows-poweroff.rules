@@ -1,0 +1,10 @@
+// Lets the box's user power the Pi off without a password, so the dashboard's
+// "Power off" button works (docs/MONITOR.md). Nothing else is allowed.
+// install.sh replaces USER_NAME with the actual user.
+polkit.addRule(function (action, subject) {
+    if ((action.id == "org.freedesktop.login1.power-off" ||
+         action.id == "org.freedesktop.login1.power-off-multiple-sessions") &&
+        subject.user == "USER_NAME") {
+        return polkit.Result.YES;
+    }
+});
