@@ -17,7 +17,7 @@ A plain web page for a phone or computer on the same network as the Pi: what the
 ## Two modes
 
 - **🐦 Crow mode** (default): a friendly view. A big mood emoji (😎 all chill, 😬 a nuance, 😱 a problem), bubbles for what is happening right now (waiting for a crow, crow visit, snack break, tray position, temperature), today's tiles (caps, not caps, snacks served, typical decision time, caps all time), the last guest with a photo button, and each problem in one plain sentence with a one-line fix and **🤓 Nerd details** to open the full explanation.
-- **🤓 Nerd mode:** all technical tables below. The button in the header switches; the browser remembers the choice.
+- **🤓 Nerd mode:** all the technical data, still friendly: emoji on every section and row, 😎/😬/😱 in the status bar, 👑 YES / 🙅 NO, a 🏆 on the best day. The button in the header switches; the browser remembers the choice.
 
 Both modes show the same data; the friendly one only words it differently. "Snacks served" counts reward commands sent to the servo, not food actually delivered.
 

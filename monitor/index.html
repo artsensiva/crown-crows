@@ -25,6 +25,10 @@
   }
   @media (prefers-reduced-motion: reduce) { h1 img { animation: none; } }
   body:not(.nerd) #tech { display: none; } body.nerd #fun { display: none; }
+  #tech section, #tech > .scroll, #tech > table.kv { border: 1px solid var(--line); border-radius: 14px; padding: 4px 14px 10px; margin-top: 8px; }
+  #tech h2 { margin-top: 22px; text-transform: none; letter-spacing: 0; font-size: 16px; color: var(--ink); }
+  #tech section h2 { margin-top: 10px; }
+  #tech .grid { gap: 12px; }
   #fun { margin-top: 14px; }
   .card { border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; margin: 12px 0; }
   .mood { display: flex; gap: 16px; align-items: center; }
@@ -109,30 +113,30 @@
 <div class="banner warn" id="banner">Connecting…</div>
 <div class="issues" id="issues"></div>
 
-<h2>Now <span class="live off" id="live"><span class="beat" id="beat"></span><span id="liveText">waiting for data</span></span></h2>
+<h2>⏱️ Now <span class="live off" id="live"><span class="beat" id="beat"></span><span id="liveText">waiting for data</span></span></h2>
 <table class="kv" id="now"></table>
 
 <div class="grid">
   <section>
-    <h2>Summary</h2>
+    <h2>📊 Summary</h2>
     <table class="kv" id="summary"></table>
     <p class="note">Decisions are software decisions. "Reward command" = servo stroke to the reward side completed; food delivery is not measured. Scores are model similarity scores, not calibrated probabilities. Times come from the Pi clock, which is unverified while the Pi is offline.</p>
   </section>
   <section>
-    <h2>Device (every 30 s or more)</h2>
+    <h2>🩺 Device <span class="meta">(every 30 s or more)</span></h2>
     <table class="kv" id="health"></table>
   </section>
 </div>
 
-<h2>Per day</h2>
+<h2>📅 Per day</h2>
 <div class="scroll"><table id="days"></table></div>
 
-<h2>Recent visits</h2>
+<h2>🐦 Recent visits</h2>
 <div class="scroll"><table id="visits"></table></div>
 
-<h2>Errors and power</h2>
+<h2>⚡ Errors and power</h2>
 <table class="kv" id="power"></table>
-<p><button id="loadErrors">Load errors from the system log</button></p>
+<p><button id="loadErrors">🔍 Load errors from the system log</button></p>
 <div id="errors"></div>
 </div>
 </main>
@@ -205,27 +209,27 @@ function render() {
   const last = rows[rows.length - 1];
   const both = (f) => `${f(now)} <span class="meta">today</span> · ${f(all)} <span class="meta">all</span>`;
   $("summary").innerHTML = kv([
-    ["Visits", both((s) => s.n)],
-    ["YES / NO", both((s) => `${s.yes} / ${s.no}`)],
-    ["YES rate", both((s) => pct(s.yes, s.n))],
-    ["Reward commands", both((s) => s.rewards)],
-    ["Servo failures", both((s) => s.servoFailed), all.servoFailed ? "bad" : ""],
-    ["Decision time p50 / p95", `${sec(quantile(all.latency, .5))} / ${sec(quantile(all.latency, .95))}`],
-    ["Analysis per photo p50 / p95", `${sec(quantile(all.inference, .5))} / ${sec(quantile(all.inference, .95))}`],
-    ["Last visit", last ? `${fmtTime(last.wall_clock_unreliable)} · ${last.decision}` : "–"],
-    ["History", rows.length ? `${fmtTime(rows[0].wall_clock_unreliable)} – ${fmtTime(last.wall_clock_unreliable)}` : "–"],
-    ["Threshold · model", last ? `${last.accept} · ${String(last.model_sha256 || "not recorded").slice(0, 12)}` : "–"],
+    ["🐦 Visits", both((s) => s.n)],
+    ["👑 / 🙅 YES / NO", both((s) => `${s.yes} / ${s.no}`)],
+    ["🎯 YES rate", both((s) => pct(s.yes, s.n))],
+    ["🥜 Reward commands", both((s) => s.rewards)],
+    ["🦾 Servo failures", both((s) => s.servoFailed), all.servoFailed ? "bad" : ""],
+    ["⚡ Decision time p50 / p95", `${sec(quantile(all.latency, .5))} / ${sec(quantile(all.latency, .95))}`],
+    ["🧠 Analysis per photo p50 / p95", `${sec(quantile(all.inference, .5))} / ${sec(quantile(all.inference, .95))}`],
+    ["🕒 Last visit", last ? `${fmtTime(last.wall_clock_unreliable)} · ${last.decision}` : "–"],
+    ["📚 History", rows.length ? `${fmtTime(rows[0].wall_clock_unreliable)} – ${fmtTime(last.wall_clock_unreliable)}` : "–"],
+    ["🎚️ Threshold · model", last ? `${last.accept} · ${String(last.model_sha256 || "not recorded").slice(0, 12)}` : "–"],
   ]);
 
   const h = health;
   $("health").innerHTML = h ? kv([
-    ["Detector service", `${h.service_state} since ${h.service_since || "–"}`, h.service_state === "active" ? "ok" : "bad"],
-    ["Service restarts", h.service_restarts ?? "–"],
-    ["Uptime", (h.uptime_seconds / 3600).toFixed(1) + " h"],
-    ["Clock synchronized", h.clock_synchronized ? "yes" : "no (times unverified)", h.clock_synchronized ? "" : "warn"],
-    ["Throttling flags", `${h.throttled || "–"}${h.throttled_meaning.length ? " · " + h.throttled_meaning.join(", ") : ""}`, h.throttled_meaning.some((m) => m.includes("now")) ? "bad" : h.throttled_meaning.length ? "warn" : ""],
-    ["Visits with photos kept", h.captures_visits],
-    ["Power draw, battery, solar", "Not measured (requires instrumentation)"],
+    ["🤖 Detector service", `${h.service_state} since ${h.service_since || "–"}`, h.service_state === "active" ? "ok" : "bad"],
+    ["🔁 Service restarts", h.service_restarts ?? "–"],
+    ["⏳ Uptime", (h.uptime_seconds / 3600).toFixed(1) + " h"],
+    ["🕰️ Clock synchronized", h.clock_synchronized ? "yes" : "no (times unverified)", h.clock_synchronized ? "" : "warn"],
+    ["⚡ Throttling flags", `${h.throttled || "–"}${h.throttled_meaning.length ? " · " + h.throttled_meaning.join(", ") : ""}`, h.throttled_meaning.some((m) => m.includes("now")) ? "bad" : h.throttled_meaning.length ? "warn" : ""],
+    ["📷 Visits with photos kept", h.captures_visits],
+    ["🔋 Power draw, battery, solar", "Not measured (requires instrumentation)"],
   ]) : kv([["Status", "Not loaded"]]);
 
   const days = new Map();
@@ -235,15 +239,16 @@ function render() {
     days.set(k, d);
   }
   const dayRows = [...days.entries()].sort((a, b) => b[0].localeCompare(a[0])).slice(0, 60);
-  $("days").innerHTML = `<tr><th>Date</th><th class="num">Visits</th><th class="num">YES</th><th class="num">NO</th><th class="num">YES rate</th><th class="num">Median decision</th></tr>` +
-    dayRows.map(([k, d]) => `<tr><td>${k}</td><td class="num">${d.n}</td><td class="num">${d.yes}</td><td class="num">${d.n - d.yes}</td><td class="num">${bar(d.n ? d.yes / d.n : 0, null, true)}${pct(d.yes, d.n)}</td><td class="num">${sec(quantile(d.lat, .5))}</td></tr>`).join("");
+  const bestDay = Math.max(0, ...dayRows.map(([, d]) => d.yes));
+  $("days").innerHTML = `<tr><th>📅 Date</th><th class="num">🐦 Visits</th><th class="num">👑 YES</th><th class="num">🙅 NO</th><th class="num">YES rate</th><th class="num">Median decision</th></tr>` +
+    dayRows.map(([k, d]) => `<tr><td>${k}${d.yes && d.yes === bestDay ? " 🏆" : ""}</td><td class="num">${d.n}</td><td class="num">${d.yes}</td><td class="num">${d.n - d.yes}</td><td class="num">${bar(d.n ? d.yes / d.n : 0, null, true)}${pct(d.yes, d.n)}</td><td class="num">${sec(quantile(d.lat, .5))}</td></tr>`).join("");
 
   $("visits").innerHTML = `<tr><th>Time</th><th>Visit</th><th>Decision</th><th class="num">Best score</th><th>Top label</th><th class="num">Photos</th><th class="num">Decision</th><th>Servo</th><th>Images</th></tr>` +
     rows.slice(-50).reverse().map((r) => {
       const b = best(r), servo = r.servo ? `${r.servo.stroke} · ${r.servo.outcome}` : "off";
       const key = `${r.boot}-${r.sequence}`, fresh = seenVisits !== null && !seenVisits.has(key);
       const links = Array.from({ length: r.photos_taken || 0 }, (_, i) => `<a href="#" data-batch="${escapeHtml(r.batch)}" data-file="image-${String(i + 1).padStart(2, "0")}.jpg">${i + 1}</a>`).join(" ");
-      return `<tr class="${fresh ? "new" : ""}"><td>${fmtTime(r.wall_clock_unreliable)}</td><td>${escapeHtml(r.boot)}-${r.sequence}</td><td><span class="chip ${r.decision === "YES" ? "yes" : "no"}">${r.decision}</span></td>` +
+      return `<tr class="${fresh ? "new" : ""}"><td>${fmtTime(r.wall_clock_unreliable)}</td><td>${escapeHtml(r.boot)}-${r.sequence}</td><td><span class="chip ${r.decision === "YES" ? "yes" : "no"}">${r.decision === "YES" ? "👑 YES" : "🙅 NO"}</span></td>` +
         `<td class="num">${b ? bar(b.cap_score, r.accept, r.decision === "YES") + b.cap_score.toFixed(3) : "–"}</td><td>${b ? escapeHtml(b.top_label) : "–"}</td><td class="num">${r.photos_taken}</td>` +
         `<td class="num ${r.trigger_to_decision_seconds > 8 ? "warn" : ""}">${sec(r.trigger_to_decision_seconds)}</td><td class="${r.servo && r.servo.outcome !== "DONE" ? "bad" : ""}">${escapeHtml(servo)}</td><td>${links}</td></tr>`;
     }).join("");
@@ -252,9 +257,9 @@ function render() {
   const moves = logs.servo.rows.filter((r) => r.goto);
   const warned = moves.filter((r) => r.power_warnings > 0);
   $("power").innerHTML = kv([
-    ["Servo moves recorded", moves.length],
-    ["Moves with undervoltage readings", `${warned.length}${moves.length ? " (" + pct(warned.length, moves.length) + ")" : ""}`, warned.length ? "bad" : ""],
-    ["Last move with undervoltage", warned.length ? new Date(warned[warned.length - 1].time_unreliable * 1000).toLocaleString() : "–"],
+    ["🦾 Servo moves recorded", moves.length],
+    ["🪫 Moves with undervoltage readings", `${warned.length}${moves.length ? " (" + pct(warned.length, moves.length) + ")" : ""}`, warned.length ? "bad" : ""],
+    ["🕒 Last move with undervoltage", warned.length ? new Date(warned[warned.length - 1].time_unreliable * 1000).toLocaleString() : "–"],
   ]);
 
   $("status").textContent = lastSync ? `Data as of ${lastSync.toLocaleTimeString()} · ${rows.length} visits${failures ? " · connection problem" : ""}` : "Connecting…";
@@ -390,8 +395,8 @@ function assess() {
   const banner = $("banner");
   banner.className = "banner " + level;
   setIcon(level);
-  banner.innerHTML = level === "ok" ? "All systems normal" :
-    `${level === "bad" ? "Problem" : "Attention"} <span>${escapeHtml(issues.map((i) => GUIDE[i[0]].title.toLowerCase()).join(" · "))} · details below</span>`;
+  banner.innerHTML = level === "ok" ? "😎 All systems normal" :
+    `${level === "bad" ? "😱 Problem" : "😬 Attention"} <span>${escapeHtml(issues.map((i) => GUIDE[i[0]].title.toLowerCase()).join(" · "))} · details below</span>`;
   const nerd = (id, evidence) => { const g = GUIDE[id];
     return `<dl><dt>What it means</dt><dd>${g.meaning}</dd><dt>Why it matters</dt><dd>${g.why}</dd><dt>Likely cause</dt><dd>${g.cause}</dd>` +
       `<dt>What to do</dt><dd><ol>${g.steps.map((s) => `<li>${escapeHtml(s)}</li>`).join("")}</ol></dd><dt>Data</dt><dd>${escapeHtml(evidence)}</dd></dl>`; };
@@ -403,7 +408,7 @@ function assess() {
   if (funHtml !== lastFunIssuesHtml) { $("funIssues").innerHTML = funHtml; lastFunIssuesHtml = funHtml; }
   const html = issues.map(([id, lvl, evidence]) => {
     const g = GUIDE[id];
-    return `<details data-id="${id}"${openIssues.has(id) ? " open" : ""}><summary><span class="dot ${lvl}"></span>${g.title}<span class="meta">${escapeHtml(evidence)}</span></summary>` +
+    return `<details data-id="${id}"${openIssues.has(id) ? " open" : ""}><summary><span class="dot ${lvl}"></span>${FUN[id][0]} ${g.title}<span class="meta">${escapeHtml(evidence)}</span></summary>` +
       `<dl><dt>What it means</dt><dd>${g.meaning}</dd><dt>Why it matters</dt><dd>${g.why}</dd><dt>Likely cause</dt><dd>${g.cause}</dd>` +
       `<dt>What to do</dt><dd><ol>${g.steps.map((s) => `<li>${escapeHtml(s)}</li>`).join("")}</ol></dd><dt>Data</dt><dd>${escapeHtml(evidence)}</dd></dl></details>`;
   }).join("");
@@ -486,19 +491,19 @@ function renderNow() {
   const servoNames = { home: "centre (home)", dump_reward: "reward side", dump_only: "dump side", moving: "moving" };
   const stateCls = n.state.startsWith("detector") ? "bad" : n.state.startsWith("ready") ? "ok" : n.state.startsWith("visit in progress") ? "info" : n.state.startsWith("starting") ? "info" : "warn";
   const nowRows = [
-    ["State", dot(stateCls, stateCls === "info") + n.state, stateCls === "info" ? "" : stateCls],
-    ["Motion sensor", n.motion == null ? "–" : n.motion ? dot("warn", true) + "motion (HIGH)" : dot("") + "no motion (LOW)"],
-    ["Light", n.light ? (n.light === "off" ? dot("") : dot("info", n.light === "white")) + n.light : "–"],
-    ["Servo", s ? dot(s.position === "home" ? "ok" : "info", s.position !== "home") + `${servoNames[s.position] || s.position} · ${s.pulse_us} µs · ${s.holding ? "holding" : "pulses off"}` : "–"],
-    ["Last visit", v ? `${v.decision} · ${ago(n.read_at - new Date(v.wall_clock_unreliable).getTime() / 1000)} (${v.boot}-${v.sequence})` : "–"],
-    ["CPU load (1 min)", n.load_1min.toFixed(2) + " of 4 cores", n.load_1min > 3.5 ? "warn" : ""],
-    ["CPU clock · temperature", `${n.cpu_mhz != null ? Math.round(n.cpu_mhz) + " MHz" : "–"} · ${n.cpu_temp_c != null ? n.cpu_temp_c.toFixed(1) + " °C" : "–"}`, n.cpu_temp_c >= 80 ? "bad" : n.cpu_temp_c >= 70 ? "warn" : ""],
-    ["Memory available", `${n.memory_available_mb} of ${n.memory_total_mb} MB`, n.memory_available_mb < 100 ? "warn" : ""],
-    ["Disk free", `${n.disk_free_gb} of ${n.disk_total_gb} GB`, n.disk_free_gb < 0.05 * n.disk_total_gb ? "bad" : n.disk_free_gb < 0.15 * n.disk_total_gb ? "warn" : ""],
+    ["🚦 State", dot(stateCls, stateCls === "info") + n.state, stateCls === "info" ? "" : stateCls],
+    ["👀 Motion sensor", n.motion == null ? "–" : n.motion ? dot("warn", true) + "motion (HIGH)" : dot("") + "no motion (LOW)"],
+    ["💡 Light", n.light ? (n.light === "off" ? dot("") : dot("info", n.light === "white")) + n.light : "–"],
+    ["🦾 Servo", s ? dot(s.position === "home" ? "ok" : "info", s.position !== "home") + `${servoNames[s.position] || s.position} · ${s.pulse_us} µs · ${s.holding ? "holding" : "pulses off"}` : "–"],
+    ["🕒 Last visit", v ? `${v.decision} · ${ago(n.read_at - new Date(v.wall_clock_unreliable).getTime() / 1000)} (${v.boot}-${v.sequence})` : "–"],
+    ["🏋️ CPU load (1 min)", n.load_1min.toFixed(2) + " of 4 cores", n.load_1min > 3.5 ? "warn" : ""],
+    ["🌡️ CPU clock · temperature", `${n.cpu_mhz != null ? Math.round(n.cpu_mhz) + " MHz" : "–"} · ${n.cpu_temp_c != null ? n.cpu_temp_c.toFixed(1) + " °C" : "–"}`, n.cpu_temp_c >= 80 ? "bad" : n.cpu_temp_c >= 70 ? "warn" : ""],
+    ["🧠 Memory available", `${n.memory_available_mb} of ${n.memory_total_mb} MB`, n.memory_available_mb < 100 ? "warn" : ""],
+    ["💾 Disk free", `${n.disk_free_gb} of ${n.disk_total_gb} GB`, n.disk_free_gb < 0.05 * n.disk_total_gb ? "bad" : n.disk_free_gb < 0.15 * n.disk_total_gb ? "warn" : ""],
   ];
   // Rows whose value differs from the previous reading flash briefly ("Last visit" changes every reading, so it is left out).
   $("now").innerHTML = nowRows.map(([k, v, cls]) => {
-    const changed = k !== "Last visit" && previousNow[k] !== undefined && previousNow[k] !== v;
+    const changed = !k.includes("Last visit") && previousNow[k] !== undefined && previousNow[k] !== v;
     return `<tr><th>${k}</th><td class="${cls || ""}${changed ? " changed" : ""}">${v}</td></tr>`;
   }).join("");
   previousNow = Object.fromEntries(nowRows.map(([k, v]) => [k, v]));
@@ -558,8 +563,8 @@ $("visits").addEventListener("click", async (event) => {
 $("loadErrors").addEventListener("click", async () => {
   try {
     const e = await (await api("/api/errors")).json();
-    $("errors").innerHTML = `<h2>Detector warnings and errors (last 50)</h2><pre>${escapeHtml(e.service.join("\n") || "None recorded")}</pre>` +
-      `<h2>Kernel undervoltage events</h2><pre>${escapeHtml(e.kernel_undervoltage.join("\n") || "None recorded")}</pre>`;
+    $("errors").innerHTML = `<h2>🧯 Detector warnings and errors (last 50)</h2><pre>${escapeHtml(e.service.join("\n") || "None recorded")}</pre>` +
+      `<h2>🪫 Kernel undervoltage events</h2><pre>${escapeHtml(e.kernel_undervoltage.join("\n") || "None recorded")}</pre>`;
   } catch (error) { $("errors").textContent = error.message; }
 });
 
