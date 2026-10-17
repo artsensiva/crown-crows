@@ -2,9 +2,10 @@
 # loaded. Starts at boot without a login (requires `loginctl enable-linger
 # <user>`) and restarts after crashes. YES = reward stroke, NO = dump-only
 # stroke. The tray area comes from config/local.tray.json (docs/DEPLOY.md).
-# Recognition runs on 2 cores: on 4 the Pi's supply sagged and the CPU was
-# capped, so 2 cores decided faster (1.27 s instead of about 2 s per photo,
-# measured 2026-10-17; docs/MONITOR.md).
+# Recognition runs on 2 cores: alone, 4 cores are fastest (0.76 s per photo),
+# but in real visits, together with camera and light, the supply sagged and
+# the Pi capped its CPU (about 2 s); 2 cores took 1.27 s without a dip
+# (measured 2026-10-17; docs/MONITOR.md).
 # Install: see docs/DEPLOY.md.
 [Unit]
 Description=Crown Crows detector (PIR, light, camera, offline recognition, servo strokes)
