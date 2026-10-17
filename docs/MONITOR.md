@@ -10,7 +10,7 @@ A plain web page for a phone or computer on the same network as the Pi: what the
 
 - **Nothing runs while nobody is looking.** systemd listens on port 8080 (`deploy/crown-crows-monitor.socket`) and starts `monitor/server.py` only when a browser connects; the server exits after 2 minutes without requests.
 - **Read-only.** The server serves only the page, the two logs (`logs/detect.jsonl`, `logs/servo.jsonl`, and their `.1` generations) from a byte position on, single photos from `captures/`, live readings (at most every 10 s) and the last warnings from the system log. No hardware control, no writes. Standard library only; lowest CPU and disk priority (`Nice=19`, idle I/O, `CPUQuota=20%`, `MemoryMax=64M`).
-- **"Now", every 3 s while the page is open:** the state (starting, ready, visit in progress, triggers ignored for N s, detector stopped), motion sensor level, light, servo position, last visit, CPU load. It comes from cheap reads only: one `pinctrl` call for the GPIO levels, the PWM duty cycle, the end of the visit log, `/proc`; the detector's start time at most once a minute. Measured on the Pi: about 8 ms of CPU per reading, about 0.3 % of one core while the page is open. When a new visit appears, its record is fetched at once.
+- **"Now", every 3 s while the page is open:** the state (starting, ready, visit in progress, triggers ignored for N s, detector stopped), motion sensor level, light, servo position, last visit, CPU load, CPU clock and temperature, memory and disk. It comes from cheap reads only: one `pinctrl` call for the GPIO levels, the PWM duty cycle, the end of the visit log, `/proc` and `/sys` files (no external programs for clock, temperature, memory and disk); the detector's start time at most once a minute. Measured on the Pi: about 8 ms of CPU per reading, about 0.3 % of one core while the page is open. When a new visit appears, its record is fetched at once.
 - **The browser does the work.** It loads the logs once, then fetches only new lines: every 5 s, slowing to 30 s while nothing happens, and not at all while the page is in the background. Statistics and exports are computed in the browser.
 - **Access:** local network only, with the token. The connection is plain HTTP, so use it on a trusted network (WPA2 Wi-Fi).
 
@@ -42,7 +42,7 @@ The status bar is computed in the browser from data the page already has; nothin
 | Decision time | From the PIR trigger to the decision |
 | Analysis per photo | Recognition time per photo on the Pi |
 | Times, dates | The Pi's clock: correct while it is synchronised over the network, unverified offline (no real-time clock) |
-| Device (live) | Read when the page asks: service state, restarts, uptime, clock sync, throttling flags, temperature, CPU clock, memory, disk |
+| Device (every 30 s or more) | Readings that need external programs: service state and restarts, uptime, clock sync, throttling and undervoltage flags (`vcgencmd`) |
 | Undervoltage | Servo moves during which the Pi reported undervoltage (`logs/servo.jsonl`), and kernel undervoltage events (system log) |
 | Power draw, battery, solar | Not measured: needs instrumentation |
 

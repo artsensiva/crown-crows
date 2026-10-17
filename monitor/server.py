@@ -138,6 +138,19 @@ def now_reading(server):
         state = f"visit done; new triggers ignored for {ignore_left:.0f} s"
     else:
         state = "ready: waiting for a crow"
+    # System figures from files only (no external programs): well under 1 ms.
+    def read_number(path, scale):
+        try:
+            return round(int(Path(path).read_text()) / scale, 1)
+        except (OSError, ValueError):
+            return None
+    meminfo = {line.split(":")[0]: int(line.split()[1]) for line in Path("/proc/meminfo").read_text().splitlines()[:3]}
+    disk = shutil.disk_usage(ROOT)
+    reading.update({"cpu_mhz": read_number("/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq", 1000),
+                    "cpu_temp_c": read_number("/sys/class/thermal/thermal_zone0/temp", 1000),
+                    "memory_available_mb": round(meminfo.get("MemAvailable", 0) / 1024),
+                    "memory_total_mb": round(meminfo.get("MemTotal", 0) / 1024),
+                    "disk_free_gb": round(disk.free / 1e9, 1), "disk_total_gb": round(disk.total / 1e9, 1)})
     reading.update({"state": state, "detector_running_seconds": running_for,
                     "load_1min": float(Path("/proc/loadavg").read_text().split()[0]),
                     "last_visit": {key: visit.get(key) for key in ("boot", "sequence", "wall_clock_unreliable",

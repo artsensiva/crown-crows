@@ -66,7 +66,7 @@
     <p class="note">Decisions are software decisions. "Reward command" = servo stroke to the reward side completed; food delivery is not measured. Scores are model similarity scores, not calibrated probabilities. Times come from the Pi clock, which is unverified while the Pi is offline.</p>
   </section>
   <section>
-    <h2>Device (live)</h2>
+    <h2>Device (every 30 s or more)</h2>
     <table class="kv" id="health"></table>
   </section>
 </div>
@@ -170,10 +170,6 @@ function render() {
     ["Uptime", (h.uptime_seconds / 3600).toFixed(1) + " h"],
     ["Clock synchronized", h.clock_synchronized ? "yes" : "no (times unverified)", h.clock_synchronized ? "" : "warn"],
     ["Throttling flags", `${h.throttled || "–"}${h.throttled_meaning.length ? " · " + h.throttled_meaning.join(", ") : ""}`, h.throttled_meaning.some((m) => m.includes("now")) ? "bad" : h.throttled_meaning.length ? "warn" : ""],
-    ["CPU temperature", h.temperature_c != null ? h.temperature_c.toFixed(1) + " °C" : "–", h.temperature_c >= 80 ? "bad" : h.temperature_c >= 70 ? "warn" : ""],
-    ["CPU clock", h.arm_clock_mhz != null ? h.arm_clock_mhz + " MHz" : "–"],
-    ["Memory available", `${h.memory_available_mb} of ${h.memory_total_mb} MB`],
-    ["Disk free", `${h.disk_free_gb} of ${h.disk_total_gb} GB`, h.disk_free_gb < 0.05 * h.disk_total_gb ? "bad" : h.disk_free_gb < 0.15 * h.disk_total_gb ? "warn" : ""],
     ["Visits with photos kept", h.captures_visits],
     ["Power draw, battery, solar", "Not measured (requires instrumentation)"],
   ]) : kv([["Status", "Not loaded"]]);
@@ -221,10 +217,12 @@ function assess() {
   if (h) {
     if (h.throttled_meaning.includes("undervoltage now")) problems.push("undervoltage now");
     else if (h.throttled_meaning.includes("undervoltage since boot")) warnings.push("undervoltage since boot");
-    if (h.temperature_c >= 80) problems.push(`CPU ${h.temperature_c} °C`); else if (h.temperature_c >= 70) warnings.push(`CPU ${h.temperature_c} °C`);
-    if (h.disk_free_gb < 0.05 * h.disk_total_gb) problems.push("disk almost full"); else if (h.disk_free_gb < 0.15 * h.disk_total_gb) warnings.push("disk filling up");
-    if (h.memory_available_mb < 100) warnings.push("low memory");
     if (!h.clock_synchronized) warnings.push("clock not synchronised");
+  }
+  if (n) {
+    if (n.cpu_temp_c >= 80) problems.push(`CPU ${n.cpu_temp_c} °C`); else if (n.cpu_temp_c >= 70) warnings.push(`CPU ${n.cpu_temp_c} °C`);
+    if (n.disk_free_gb < 0.05 * n.disk_total_gb) problems.push("disk almost full"); else if (n.disk_free_gb < 0.15 * n.disk_total_gb) warnings.push("disk filling up");
+    if (n.memory_available_mb < 100) warnings.push("low memory");
   }
   if (rows.slice(-20).some((r) => r.servo && r.servo.outcome !== "DONE")) problems.push("servo failure in recent visits");
   const recentMoves = logs.servo.rows.filter((r) => r.goto).slice(-20);
@@ -251,6 +249,9 @@ function renderNow() {
     ["Servo", s ? dot(s.position === "home" ? "ok" : "info", s.position !== "home") + `${servoNames[s.position] || s.position} · ${s.pulse_us} µs · ${s.holding ? "holding" : "pulses off"}` : "–"],
     ["Last visit", v ? `${v.decision} · ${ago(n.read_at - new Date(v.wall_clock_unreliable).getTime() / 1000)} (${v.boot}-${v.sequence})` : "–"],
     ["CPU load (1 min)", n.load_1min.toFixed(2) + " of 4 cores", n.load_1min > 3.5 ? "warn" : ""],
+    ["CPU clock · temperature", `${n.cpu_mhz != null ? Math.round(n.cpu_mhz) + " MHz" : "–"} · ${n.cpu_temp_c != null ? n.cpu_temp_c.toFixed(1) + " °C" : "–"}`, n.cpu_temp_c >= 80 ? "bad" : n.cpu_temp_c >= 70 ? "warn" : ""],
+    ["Memory available", `${n.memory_available_mb} of ${n.memory_total_mb} MB`, n.memory_available_mb < 100 ? "warn" : ""],
+    ["Disk free", `${n.disk_free_gb} of ${n.disk_total_gb} GB`, n.disk_free_gb < 0.05 * n.disk_total_gb ? "bad" : n.disk_free_gb < 0.15 * n.disk_total_gb ? "warn" : ""],
   ]);
 }
 async function pollNow() {
