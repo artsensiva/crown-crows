@@ -38,8 +38,14 @@
   .bar i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 2px; background: var(--soft); }
   .bar i.ok { background: var(--ok); } .bar b { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--ink); }
   tr.new td { animation: flash 3s ease-out; }
+  td.changed { animation: flash 1.5s ease-out; }
+  .live { font-size: 12px; font-weight: 600; color: var(--ok); text-transform: none; letter-spacing: 0; margin-left: 10px; }
+  .live.stale { color: var(--warn); } .live.off { color: var(--bad); }
+  .beat { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: currentColor; margin-right: 5px; opacity: .35; }
+  .beat.on { animation: beat 0.8s ease-out; }
+  @keyframes beat { from { opacity: 1; transform: scale(1.4); } to { opacity: .35; transform: scale(1); } }
   @keyframes flash { from { background: var(--info-bg); } to { background: transparent; } }
-  @media (prefers-reduced-motion: reduce) { .dot.pulse, tr.new td { animation: none; } }
+  @media (prefers-reduced-motion: reduce) { .dot.pulse, tr.new td, td.changed, .beat.on { animation: none; } }
   .note { color: var(--soft); font-size: 12.5px; margin: 6px 0 0; }
   pre { white-space: pre-wrap; font-size: 12px; margin: 4px 0; }
   a { color: inherit; }
@@ -56,7 +62,7 @@
 
 <div class="banner warn" id="banner">Connecting…</div>
 
-<h2>Now</h2>
+<h2>Now <span class="live off" id="live"><span class="beat" id="beat"></span><span id="liveText">waiting for data</span></span></h2>
 <table class="kv" id="now"></table>
 
 <div class="grid">
@@ -206,7 +212,7 @@ function render() {
   $("status").textContent = lastSync ? `Data as of ${lastSync.toLocaleTimeString()} · ${rows.length} visits${failures ? " · connection problem" : ""}` : "Connecting…";
 }
 
-let current = null, nowTimer = null, lastSeen = null, nowFailed = false;
+let current = null, nowTimer = null, lastSeen = null, nowFailed = false, previousNow = {}, nowReceived = null;
 
 function assess() {
   // Overall status from data already on the page; nothing extra is read.
@@ -242,7 +248,7 @@ function renderNow() {
   const v = n.last_visit, s = n.servo;
   const servoNames = { home: "centre (home)", dump_reward: "reward side", dump_only: "dump side", moving: "moving" };
   const stateCls = n.state.startsWith("detector") ? "bad" : n.state.startsWith("ready") ? "ok" : n.state.startsWith("visit in progress") ? "info" : n.state.startsWith("starting") ? "info" : "warn";
-  $("now").innerHTML = kv([
+  const nowRows = [
     ["State", dot(stateCls, stateCls === "info") + n.state, stateCls === "info" ? "" : stateCls],
     ["Motion sensor", n.motion == null ? "–" : n.motion ? dot("warn", true) + "motion (HIGH)" : dot("") + "no motion (LOW)"],
     ["Light", n.light ? (n.light === "off" ? dot("") : dot("info", n.light === "white")) + n.light : "–"],
@@ -252,13 +258,21 @@ function renderNow() {
     ["CPU clock · temperature", `${n.cpu_mhz != null ? Math.round(n.cpu_mhz) + " MHz" : "–"} · ${n.cpu_temp_c != null ? n.cpu_temp_c.toFixed(1) + " °C" : "–"}`, n.cpu_temp_c >= 80 ? "bad" : n.cpu_temp_c >= 70 ? "warn" : ""],
     ["Memory available", `${n.memory_available_mb} of ${n.memory_total_mb} MB`, n.memory_available_mb < 100 ? "warn" : ""],
     ["Disk free", `${n.disk_free_gb} of ${n.disk_total_gb} GB`, n.disk_free_gb < 0.05 * n.disk_total_gb ? "bad" : n.disk_free_gb < 0.15 * n.disk_total_gb ? "warn" : ""],
-  ]);
+  ];
+  // Rows whose value differs from the previous reading flash briefly ("Last visit" changes every reading, so it is left out).
+  $("now").innerHTML = nowRows.map(([k, v, cls]) => {
+    const changed = k !== "Last visit" && previousNow[k] !== undefined && previousNow[k] !== v;
+    return `<tr><th>${k}</th><td class="${cls || ""}${changed ? " changed" : ""}">${v}</td></tr>`;
+  }).join("");
+  previousNow = Object.fromEntries(nowRows.map(([k, v]) => [k, v]));
 }
 async function pollNow() {
   clearTimeout(nowTimer);
   if (document.hidden) return;  // nothing is read while the page is in the background
   try {
     current = await (await api("/api/now")).json();
+    nowReceived = Date.now();
+    const beat = $("beat"); beat.classList.remove("on"); void beat.offsetWidth; beat.classList.add("on");
     const key = current.last_visit ? `${current.last_visit.boot}-${current.last_visit.sequence}` : null;
     if (lastSeen !== null && key !== lastSeen) { idle = 0; await refresh(false); }  // a new visit: fetch its record now
     lastSeen = key;
@@ -321,6 +335,13 @@ $("csv").addEventListener("click", () => {
   download("crown-crows-visits.csv", [head, ...lines].map((row) => row.map((v) => `"${String(v ?? "").replace(/"/g, '""')}"`).join(",")).join("\n"), "text/csv");
 });
 
+setInterval(() => {  // local clock only: shows how old the live data is; no request to the Pi
+  const live = $("live"), age = nowReceived ? (Date.now() - nowReceived) / 1000 : null;
+  if (document.hidden) return;
+  if (age === null) { live.className = "live off"; $("liveText").textContent = nowFailed ? "no connection" : "waiting for data"; return; }
+  live.className = "live" + (age >= 60 ? " off" : age >= 10 ? " stale" : "");
+  $("liveText").textContent = `LIVE · updated ${Math.round(age)} s ago · every 3 s`;
+}, 1000);
 renderNow();
 refresh(true).then(schedule);
 pollNow();

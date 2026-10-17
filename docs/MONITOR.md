@@ -23,6 +23,7 @@ Colours always come with text, so nothing depends on colour alone.
 | Status bar: green "All systems normal" | Nothing below applies |
 | Status bar: amber "Attention" | Undervoltage since boot or during recent servo moves; clock not synchronised; CPU 70 °C or more; disk under 15 % free; under 100 MB memory available |
 | Status bar: red "Problem" | No connection to the Pi; detector not running; undervoltage now; servo failure in the last 20 visits; CPU 80 °C or more; disk under 5 % free |
+| "LIVE · updated N s ago" next to "Now" | Counts up every second in the browser; the dot pulses at each reading from the Pi (every 3 s). Green under 10 s, amber under 60 s, red otherwise. A value that changed since the previous reading is highlighted for a moment |
 | Dot next to "Data as of" | Live data under 10 s old (green), under 60 s (amber), older (red) |
 | "Now" dots | Green: ready, servo at the centre. Blue, blinking: visit in progress, light on for photos, servo on its way. Amber, blinking: motion sensor HIGH. Amber: triggers being ignored after a visit. Red: detector not running |
 | Visit rows | YES/NO marker; score bar with the threshold as a black line (green bar = YES); a new visit is highlighted for 3 s; decision time over 8 s in amber; servo failure in red |
