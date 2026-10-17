@@ -30,7 +30,7 @@ Colours always come with text, so nothing depends on colour alone.
 | Visit rows | YES/NO marker; score bar with the threshold as a black line (green bar = YES); a new visit is highlighted for 3 s; decision time over 8 s in amber; servo failure in red |
 | Per day | Bar for the YES rate |
 
-The status bar is computed in the browser from data the page already has; nothing extra is read on the Pi.
+The status bar is computed in the browser from data the page already has; nothing extra is read on the Pi. Below the bar, every warning opens into an explanation: what it means, why it matters, the likely cause on this box, what to do step by step, and the data behind it (for example how many of the recent servo moves had undervoltage, and when the last one was).
 
 ## What the numbers mean
 

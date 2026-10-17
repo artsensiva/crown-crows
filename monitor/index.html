@@ -38,6 +38,14 @@
   .banner { margin: 12px 0 0; padding: 8px 12px; border-radius: 4px; font-weight: 600; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
   .banner.ok { background: var(--ok-bg); color: var(--ok); } .banner.warn { background: var(--warn-bg); color: var(--warn); } .banner.bad { background: var(--bad-bg); color: var(--bad); }
   .banner span { font-weight: 400; }
+  .issues { margin: 6px 0 0; }
+  .issues details { border: 1px solid var(--line); border-radius: 4px; margin: 6px 0; padding: 6px 10px; }
+  .issues summary { cursor: pointer; font-weight: 600; }
+  .issues summary .meta { font-weight: 400; margin-left: 6px; }
+  .issues dl { display: grid; grid-template-columns: 140px 1fr; gap: 4px 12px; margin: 8px 0 2px; }
+  .issues dt { color: var(--soft); } .issues dd { margin: 0; }
+  .issues ol { margin: 0; padding-left: 18px; }
+  @media (max-width: 560px) { .issues dl { grid-template-columns: 1fr; } .issues dt { margin-top: 6px; } }
   .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 7px; background: var(--soft); vertical-align: 0; }
   .dot.ok { background: var(--ok); } .dot.warn { background: var(--warn); } .dot.bad { background: var(--bad); } .dot.info { background: var(--info); }
   .dot.pulse { animation: pulse 1s ease-in-out infinite; }
@@ -71,6 +79,7 @@
 </header>
 
 <div class="banner warn" id="banner">Connecting…</div>
+<div class="issues" id="issues"></div>
 
 <h2>Now <span class="live off" id="live"><span class="beat" id="beat"></span><span id="liveText">waiting for data</span></span></h2>
 <table class="kv" id="now"></table>
@@ -246,34 +255,117 @@ function setIcon(status) {
   $("favicon").href = capIcon(status);
 }
 
+// What each warning means, why it matters, the likely cause on this box and what to do.
+const GUIDE = {
+  no_connection: {
+    title: "No connection to the Pi",
+    meaning: "The page could not get data from the Pi on the last attempt.",
+    why: "Everything shown may be out of date.",
+    cause: "The Pi is off or rebooting, Wi-Fi dropped, or this device is on another network.",
+    steps: ["Check the Pi's power and lights.", "Make sure this phone or computer is on the same Wi-Fi.", "Wait 30 s; the page reconnects by itself."],
+  },
+  detector_down: {
+    title: "Detector not running",
+    meaning: "The crown-crows-detect service is not active: no photos, no decisions, no servo strokes.",
+    why: "The box does not work for crows while it is stopped.",
+    cause: "A crash (it restarts itself after 30 s), a stop for maintenance, or a hardware error at start.",
+    steps: ["Wait 30–60 s: the service restarts automatically.", "If it stays stopped: open \"Load errors from the system log\" below and read the last error.", "On the Pi: systemctl --user status crown-crows-detect"],
+  },
+  undervoltage_now: {
+    title: "Undervoltage now",
+    meaning: "Right now the Pi's 5 V supply is below about 4.63 V.",
+    why: "The Pi slows itself down, can crash or reboot, and a power dip during a write can corrupt the SD card.",
+    cause: "On this box the servo is powered from the Pi's 5 V pin; each stroke draws current peaks of up to 0.6–0.75 A. A weak power supply or a long, thin cable makes it worse.",
+    steps: ["Give the servo its own supply (see \"Undervoltage during servo moves\").", "Power the Pi with a good 5.1 V, at least 2.5 A supply and a short, thick cable.", "Avoid unplugging or updating while this is shown."],
+  },
+  undervoltage_boot: {
+    title: "Undervoltage since boot",
+    meaning: "At least once since the Pi last started, its 5 V supply dropped below about 4.63 V. It is not happening at this moment.",
+    why: "Each dip risks a crash or SD-card damage. The flag is a memory: it stays on until the next reboot, even after the cause is fixed.",
+    cause: "Almost certainly the servo strokes (see the servo warning). The dips happen at the moment the servo starts moving.",
+    steps: ["Fix the servo power first (next warning).", "Then reboot the Pi once: the flag clears.", "If it comes back after a reboot, the supply is still too weak."],
+  },
+  servo_undervoltage: {
+    title: "Undervoltage during servo moves",
+    meaning: "While the servo was moving, the Pi itself measured undervoltage. The servo control checks the power flags at every step and records them per move.",
+    why: "This is the direct cause of the undervoltage flags: the servo pulls the Pi's supply down. The strokes still complete, but each one is a risk for the Pi.",
+    cause: "The servo's + wire is on the Pi's 5 V pin, so the Pi and the servo share one supply through the Pi's board. A starting servo draws far more current than the Pi's 5 V pin path is meant for.",
+    steps: [
+      "Power the servo separately: a second port of the power bank, or a 5–6 V regulator rated at least 1 A.",
+      "Connect the servo's − wire to that supply's − and to a Pi GND pin (shared ground); keep the signal wire on GPIO18 (pin 12).",
+      "Put a 470–1000 µF capacitor across the servo supply close to the servo.",
+      "Check: new visits should add no moves with undervoltage readings; then reboot once to clear the \"since boot\" flag.",
+    ],
+  },
+  servo_failure: {
+    title: "Servo failure in recent visits",
+    meaning: "A stroke was reported as failed: the servo did not reach its target.",
+    why: "The object may stay in the tray, or the reward is not given.",
+    cause: "Something blocking the tray, a power problem, or a missing calibration.",
+    steps: ["Check the tray moves freely by hand (power off).", "Look at the servo column in \"Recent visits\" and at the system log errors.", "If the calibration changed: recalibrate (docs/SERVO.md)."],
+  },
+  clock: {
+    title: "Clock not synchronised",
+    meaning: "The Pi has not set its clock from the network.",
+    why: "Dates and times on this page may be wrong; per-day statistics can be shifted.",
+    cause: "The Pi has no battery-backed clock; offline it continues from the last saved time after a power cut.",
+    steps: ["Connect the Pi to the network once: the clock sets itself.", "For field use: add a real-time clock module (DS3231)."],
+  },
+  hot: { title: "CPU hot", meaning: "The processor is at 70 °C or more (80 °C: problem).", why: "Above about 80 °C the Pi slows itself down; recognition takes longer.", cause: "Sun on the housing, no ventilation, or a long run of visits.", steps: ["Shade the box; add a light-coloured roof or ventilation.", "Watch whether it falls back after visits."] },
+  disk: { title: "Disk filling up", meaning: "Less than 15 % of the SD card is free (5 %: problem).", why: "A full card stops photos and logs, and can stop the detector.", cause: "Photos and logs accumulate.", steps: ["Copy old photos off the Pi and delete them, or lower --keep-batches.", "Check for large files outside crown-crows."] },
+  memory: { title: "Low memory", meaning: "Less than 100 MB of memory is available.", why: "The detector may be stopped by the system.", cause: "Another program running on the Pi.", steps: ["Check what else runs on the Pi (top).", "Reboot if it persists."] },
+};
+
+let openIssues = new Set(), lastIssuesHtml = "";
 function assess() {
   // Overall status from data already on the page; nothing extra is read.
-  const problems = [], warnings = [];
+  const issues = [];  // [id, level, evidence]
   const h = health, n = current, rows = logs.detect.rows.filter((r) => r.decision);
-  if (failures || nowFailed) problems.push("no connection to the Pi");
-  if (n && n.state.startsWith("detector")) problems.push(n.state);
+  if (failures || nowFailed) issues.push(["no_connection", "bad", nowReceived ? `last data ${ago((Date.now() - nowReceived) / 1000)}` : "no data received yet"]);
+  if (n && n.state.startsWith("detector")) issues.push(["detector_down", "bad", n.state]);
   if (h) {
-    if (h.throttled_meaning.includes("undervoltage now")) problems.push("undervoltage now");
-    else if (h.throttled_meaning.includes("undervoltage since boot")) warnings.push("undervoltage since boot");
-    if (!h.clock_synchronized) warnings.push("clock not synchronised");
+    const since = `Pi started ${ago(h.uptime_seconds)}; flags ${h.throttled}`;
+    if (h.throttled_meaning.includes("undervoltage now")) issues.push(["undervoltage_now", "bad", since]);
+    else if (h.throttled_meaning.includes("undervoltage since boot")) issues.push(["undervoltage_boot", "warn", since]);
+    if (!h.clock_synchronized) issues.push(["clock", "warn", "the Pi reports no network time"]);
   }
   if (n) {
-    if (n.cpu_temp_c >= 80) problems.push(`CPU ${n.cpu_temp_c} °C`); else if (n.cpu_temp_c >= 70) warnings.push(`CPU ${n.cpu_temp_c} °C`);
-    if (n.disk_free_gb < 0.05 * n.disk_total_gb) problems.push("disk almost full"); else if (n.disk_free_gb < 0.15 * n.disk_total_gb) warnings.push("disk filling up");
-    if (n.memory_available_mb < 100) warnings.push("low memory");
+    if (n.cpu_temp_c >= 70) issues.push(["hot", n.cpu_temp_c >= 80 ? "bad" : "warn", `now ${n.cpu_temp_c} °C`]);
+    const free = n.disk_free_gb / n.disk_total_gb;
+    if (free < 0.15) issues.push(["disk", free < 0.05 ? "bad" : "warn", `${n.disk_free_gb} of ${n.disk_total_gb} GB free`]);
+    if (n.memory_available_mb < 100) issues.push(["memory", "warn", `${n.memory_available_mb} MB available`]);
   }
-  if (rows.slice(-20).some((r) => r.servo && r.servo.outcome !== "DONE")) problems.push("servo failure in recent visits");
-  const recentMoves = logs.servo.rows.filter((r) => r.goto).slice(-20);
-  if (recentMoves.some((r) => r.power_warnings > 0)) warnings.push("undervoltage during recent servo moves");
+  const failed = rows.slice(-20).filter((r) => r.servo && r.servo.outcome !== "DONE");
+  if (failed.length) issues.push(["servo_failure", "bad", `${failed.length} of the last 20 visits`]);
+  const moves = logs.servo.rows.filter((r) => r.goto), recentMoves = moves.slice(-20);
+  const warned = moves.filter((r) => r.power_warnings > 0), recentWarned = recentMoves.filter((r) => r.power_warnings > 0);
+  if (recentWarned.length) {
+    const last = warned[warned.length - 1];
+    issues.push(["servo_undervoltage", "warn", `${recentWarned.length} of the last ${recentMoves.length} servo moves (${warned.length} of ${moves.length} in total); ` +
+      `last ${ago(Date.now() / 1000 - last.time_unreliable)}, ${last.power_warnings} readings during that move`]);
+  }
+  const level = issues.some((i) => i[1] === "bad") ? "bad" : issues.length ? "warn" : "ok";
   const banner = $("banner");
-  banner.className = "banner " + (problems.length ? "bad" : warnings.length ? "warn" : "ok");
-  setIcon(problems.length ? "bad" : warnings.length ? "warn" : "ok");
-  banner.innerHTML = problems.length ? `Problem <span>${escapeHtml([...problems, ...warnings].join(" · "))}</span>`
-    : warnings.length ? `Attention <span>${escapeHtml(warnings.join(" · "))}</span>` : "All systems normal";
+  banner.className = "banner " + level;
+  setIcon(level);
+  banner.innerHTML = level === "ok" ? "All systems normal" :
+    `${level === "bad" ? "Problem" : "Attention"} <span>${escapeHtml(issues.map((i) => GUIDE[i[0]].title.toLowerCase()).join(" · "))} · details below</span>`;
+  const html = issues.map(([id, lvl, evidence]) => {
+    const g = GUIDE[id];
+    return `<details data-id="${id}"${openIssues.has(id) ? " open" : ""}><summary><span class="dot ${lvl}"></span>${g.title}<span class="meta">${escapeHtml(evidence)}</span></summary>` +
+      `<dl><dt>What it means</dt><dd>${g.meaning}</dd><dt>Why it matters</dt><dd>${g.why}</dd><dt>Likely cause</dt><dd>${g.cause}</dd>` +
+      `<dt>What to do</dt><dd><ol>${g.steps.map((s) => `<li>${escapeHtml(s)}</li>`).join("")}</ol></dd><dt>Data</dt><dd>${escapeHtml(evidence)}</dd></dl></details>`;
+  }).join("");
+  if (html !== lastIssuesHtml) { $("issues").innerHTML = html; lastIssuesHtml = html; }  // re-render only on change, keeps open panels open
   const age = n ? Date.now() / 1000 - n.read_at : Infinity;
   $("fresh").className = "dot " + (age < 10 ? "ok" : age < 60 ? "warn" : "bad");
   $("fresh").title = n ? `live data ${Math.round(age)} s old` : "no live data";
 }
+$("issues").addEventListener("toggle", (event) => {
+  const id = event.target.dataset && event.target.dataset.id; if (!id) return;
+  if (event.target.open) openIssues.add(id); else openIssues.delete(id);
+  lastIssuesHtml = "";
+}, true);
 const ago = (seconds) => seconds < 90 ? `${Math.round(seconds)} s ago` : seconds < 5400 ? `${Math.round(seconds / 60)} min ago` : `${(seconds / 3600).toFixed(1)} h ago`;
 function renderNow() {
   const n = current;
