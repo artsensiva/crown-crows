@@ -216,16 +216,18 @@ function render() {
 let current = null, nowTimer = null, lastSeen = null, nowFailed = false, previousNow = {}, nowReceived = null;
 
 function capIcon(status) {
-  // Crown cap (21 teeth) on a dark tile, with a status dot in the corner.
-  let teeth = "";
-  for (let i = 0; i < 42; i++) {
-    const a = Math.PI * 2 * i / 42, r = i % 2 ? 11.2 : 13;
-    teeth += `${(16 + r * Math.cos(a)).toFixed(2)},${(16 + r * Math.sin(a)).toFixed(2)} `;
-  }
+  // A crow wearing a gold crown ("Crown Crows"), with a status dot in the top-right corner.
   const colour = { ok: "#2fbf5f", warn: "#f0a020", bad: "#e5483b" }[status];
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="7" fill="#1f2a2e"/>` +
-    `<polygon points="${teeth}" fill="#d4a93a"/><circle cx="16" cy="16" r="8.6" fill="#e7c25a" stroke="#9c7a24" stroke-width="1"/>` +
-    (colour ? `<circle cx="25.5" cy="25.5" r="5.5" fill="${colour}" stroke="#1f2a2e" stroke-width="1.5"/>` : "") + `</svg>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">` +
+    `<rect width="32" height="32" rx="7" fill="#e8efe9"/>` +
+    `<polygon points="21,19 31,24 30,27 20,23" fill="#141618"/>` +
+    `<ellipse cx="17" cy="20.5" rx="8.5" ry="6" transform="rotate(-18 17 20.5)" fill="#141618"/>` +
+    `<polygon points="7,15 11,11 16,17 11,21" fill="#141618"/>` +
+    `<circle cx="10.5" cy="14" r="5" fill="#141618"/>` +
+    `<polygon points="6.5,12.6 1,14.6 6.5,16.4" fill="#141618"/>` +
+    `<circle cx="9" cy="13.2" r="0.9" fill="#ffffff"/>` +
+    `<polygon points="6,9.2 6,4.2 8.1,6.7 10.3,3 12.5,6.7 14.6,4.2 14.6,9.2" fill="#e0b13a" stroke="#8a6a18" stroke-width="0.6"/>` +
+    (colour ? `<circle cx="26" cy="6" r="5" fill="${colour}" stroke="#e8efe9" stroke-width="1.5"/>` : "") + `</svg>`;
   return "data:image/svg+xml," + encodeURIComponent(svg);
 }
 let iconStatus = null;
