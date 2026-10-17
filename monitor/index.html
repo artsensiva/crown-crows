@@ -14,7 +14,8 @@
   body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
   main { max-width: 1100px; margin: 0 auto; padding: 16px; }
   header { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: baseline; justify-content: space-between; border-bottom: 1px solid var(--line); padding-bottom: 8px; }
-  h1 { font-size: 18px; margin: 0; font-weight: 600; }
+  h1 { font-size: 18px; margin: 0; font-weight: 600; display: flex; align-items: center; gap: 10px; }
+  h1 img { width: 30px; height: 30px; }
   h2 { font-size: 14px; margin: 24px 0 6px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--soft); }
   .meta { color: var(--soft); font-size: 13px; }
   button { font: inherit; padding: 4px 10px; border: 1px solid var(--line); background: transparent; color: var(--ink); border-radius: 3px; cursor: pointer; min-height: 32px; }
@@ -56,7 +57,7 @@
 <body>
 <main>
 <header>
-  <h1>Crown Crows · Monitoring</h1>
+  <h1><img id="logo" alt="" src="data:,">Crown Crows · Monitoring</h1>
   <span class="meta"><span class="dot" id="fresh"></span><span id="status">Connecting…</span></span>
   <span><button id="csv">Export CSV</button> <button id="json">Export JSON</button></span>
 </header>
@@ -367,6 +368,7 @@ setInterval(() => {  // local clock only: shows how old the live data is; no req
   $("liveText").textContent = `LIVE · updated ${Math.round(age)} s ago · every 3 s`;
 }, 1000);
 setIcon(null);
+$("logo").src = capIcon(null);  // the same crowned crow as the tab icon, without the status dot
 renderNow();
 refresh(true).then(schedule);
 pollNow();
