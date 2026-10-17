@@ -60,18 +60,7 @@
   .switch button { border: 0; border-radius: 0; padding: 8px 20px; font-size: 16px; font-weight: 600; min-height: 42px; background: transparent; color: var(--ink); }
   .switch button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
   .switch button:not([aria-pressed="true"]):hover { background: var(--track); }
-  .stage { display: flex; align-items: center; gap: 10px; }
-  .stage svg { width: 110px; height: 120px; flex: none; }
-  .stage .say { position: relative; max-width: 230px; background: var(--bg); border: 1px solid var(--line); border-radius: 14px; padding: 8px 12px; font-style: italic; transition: opacity .6s; }
-  .stage .say::before { content: ""; position: absolute; left: -7px; top: 22px; width: 12px; height: 12px; background: var(--bg); border-left: 1px solid var(--line); border-bottom: 1px solid var(--line); transform: rotate(45deg); }
-  .stage .say small { display: block; font-style: normal; color: var(--soft); font-size: 11px; margin-top: 3px; }
-  .bear { transform-origin: 60px 120px; animation: sway 4.5s ease-in-out infinite; }
-  .yorick { transform-origin: 92px 92px; animation: lift 4.5s ease-in-out infinite; }
-  .eyes { transform-origin: 60px 52px; animation: blink 5s infinite; }
-  @keyframes sway { 0%, 100% { transform: rotate(-3deg); } 50% { transform: rotate(3deg); } }
-  @keyframes lift { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(-12deg); } }
-  @keyframes blink { 0%, 92%, 100% { transform: scaleY(1); } 95% { transform: scaleY(.1); } }
-  @media (prefers-reduced-motion: reduce) { body::before, .bear, .yorick, .eyes { animation: none; } }
+  @media (prefers-reduced-motion: reduce) { body::before { animation: none; } }
   header { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--line); padding-bottom: 8px; }
   h1 { font-size: 22px; margin: 0; font-weight: 600; display: flex; align-items: center; gap: 16px; }
   h1 img { width: 90px; height: 90px; border-radius: 18px; animation: swoop 1.1s cubic-bezier(.2,.8,.25,1) both; }
@@ -214,37 +203,6 @@
   <h1><img id="logo" alt="" src="data:,">Crown Crows · Monitoring</h1>
   <span class="hmeta"><span class="meta"><span class="dot" id="fresh"></span><span id="status">Connecting…</span></span>
     <a href="#mood" class="alerts" id="alerts" hidden title="Open the details"></a></span>
-  <div class="stage" aria-label="A bear playing Hamlet, silently">
-    <svg viewBox="0 0 120 130" role="img" aria-label="Cute bear in a black doublet and ruff, holding a skull">
-      <g class="bear">
-        <ellipse cx="60" cy="108" rx="30" ry="22" fill="#25262e"/>
-        <ellipse cx="60" cy="112" rx="10" ry="14" fill="#3a3c48"/>
-        <path d="M33 86 l6 -6 l5 6 l5 -6 l5 6 l5 -6 l5 6 l5 -6 l5 6 l5 -6 l6 6 q-27 12 -57 0z" fill="#f4f1ea" stroke="#d8d2c4" stroke-width="1"/>
-        <circle cx="36" cy="30" r="11" fill="#a8703f"/><circle cx="36" cy="30" r="6" fill="#e2b089"/>
-        <circle cx="84" cy="30" r="11" fill="#a8703f"/><circle cx="84" cy="30" r="6" fill="#e2b089"/>
-        <circle cx="60" cy="55" r="30" fill="#b67b47"/>
-        <path d="M38 33 q22 -10 44 0" fill="none" stroke="#d9ad3c" stroke-width="3" stroke-linecap="round"/>
-        <circle cx="60" cy="27.5" r="2.6" fill="#e04a5f"/>
-        <ellipse cx="41" cy="64" rx="6" ry="3.5" fill="#ff8fa3" opacity=".55"/><ellipse cx="79" cy="64" rx="6" ry="3.5" fill="#ff8fa3" opacity=".55"/>
-        <g class="eyes"><circle cx="48" cy="52" r="3.8" fill="#2a1d16"/><circle cx="72" cy="52" r="3.8" fill="#2a1d16"/>
-          <circle cx="49.3" cy="50.7" r="1.2" fill="#fff"/><circle cx="73.3" cy="50.7" r="1.2" fill="#fff"/></g>
-        <ellipse cx="60" cy="66" rx="13" ry="10" fill="#e9c49c"/>
-        <ellipse cx="60" cy="61" rx="5" ry="3.6" fill="#3a2a20"/>
-        <path d="M55 69 q5 4 10 0" fill="none" stroke="#3a2a20" stroke-width="1.6" stroke-linecap="round"/>
-        <ellipse cx="45" cy="104" rx="8" ry="6" fill="#b67b47"/>
-        <g class="yorick">
-          <path d="M84 100 q12 -10 14 -26" fill="none" stroke="#25262e" stroke-width="11" stroke-linecap="round"/>
-          <circle cx="98" cy="74" r="6.5" fill="#b67b47"/>
-          <circle cx="104" cy="62" r="10" fill="#f2eee3" stroke="#cfc8b6" stroke-width="1"/>
-          <rect x="99" y="68" width="10" height="7" rx="2" fill="#f2eee3" stroke="#cfc8b6" stroke-width="1"/>
-          <circle cx="100.5" cy="61" r="2.6" fill="#3b3b3b"/><circle cx="107.5" cy="61" r="2.6" fill="#3b3b3b"/>
-          <path d="M103 66 l1 -2 l1 2z" fill="#3b3b3b"/>
-          <path d="M101 70.5 v3 M104 70.5 v3 M107 70.5 v3" stroke="#cfc8b6" stroke-width="1"/>
-        </g>
-      </g>
-    </svg>
-    <div class="say" id="say">To be, or not to be…<small>Hamlet, performed silently by Bear</small></div>
-  </div>
   <span><button id="csv">Export CSV</button> <button id="json">Export JSON</button> <button id="poweroff" class="danger" title="Shut the Pi down, e.g. for work on the hardware">⏻ Power off</button></span>
 </header>
 <div class="controls">
@@ -841,17 +799,6 @@ window.addEventListener("popstate", (event) => {
 });
 if (location.hash) history.replaceState(null, "", location.pathname);  // a reload after a jump starts clean
 
-// The bear's silent Hamlet (Shakespeare, public domain), one line every 5 s while the page is visible.
-const LINES = [["To be, or not to be…", "Act III, scene 1"], ["Alas, poor Yorick!", "Act V, scene 1"],
-  ["Words, words, words.", "Act II, scene 2"], ["The rest is silence.", "Act V, scene 2 (fittingly)"],
-  ["Something is rotten in the state of Denmark.", "Act I, scene 4"], ["There is nothing either good or bad, but thinking makes it so.", "Act II, scene 2"],
-  ["Brevity is the soul of wit.", "Act II, scene 2"], ["To thine own self be true.", "Act I, scene 3"]];
-let line = 0;
-setInterval(() => {
-  if (document.hidden) return;
-  const say = $("say"); say.style.opacity = 0;
-  setTimeout(() => { line = (line + 1) % LINES.length; say.innerHTML = `${LINES[line][0]}<small>Hamlet, ${LINES[line][1]} · performed silently by Bear 🐻</small>`; say.style.opacity = 1; }, 600);
-}, 5000);
 try { setMode(localStorage.getItem("cc-mode") === "nerd"); } catch (e) { setMode(false); }
 const ago = (seconds) => seconds < 90 ? `${Math.round(seconds)} s ago` : seconds < 5400 ? `${Math.round(seconds / 60)} min ago` : `${(seconds / 3600).toFixed(1)} h ago`;
 function renderNow() {

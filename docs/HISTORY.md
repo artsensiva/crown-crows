@@ -66,7 +66,7 @@ Light leaks sealed, white reflectors added (colours neutral, still dim). With co
 
 ## 2026-10-16 to 2026-10-17: Monitoring dashboard
 
-A dashboard for a phone or computer, started only while someone looks, computing everything in the browser. It grew with the owner's requests: live readings every 3 s, colour signals, a crowned-crow icon and logo, a friendly 🐦 Crow mode next to a detailed 🤓 Nerd mode, links from every friendly figure to its data, a motion-sensor readiness light, the three last checks with photos and a breakdown per visit, problems as small chips in the header, a burst of flowers, fruit and mushrooms for YES (poo for NO), an optional password for access from outside (not published for now) and a Power off button ([MONITOR](MONITOR.md)).
+A dashboard for a phone or computer, started only while someone looks, computing everything in the browser. It grew with the owner's requests: live readings every 3 s, colour signals, a crowned-crow icon and logo, a friendly 🐦 Crow mode next to a detailed 🤓 Nerd mode, links from every friendly figure to its data, a motion-sensor readiness light, the three last checks with photos and a breakdown per visit, problems as small chips in the header, a burst of flowers, fruit and mushrooms for YES (poo for NO), a bear silently playing Hamlet (later removed at the owner's request), an optional password for access from outside (not published for now) and a Power off button ([MONITOR](MONITOR.md)).
 
 Lessons: an alarm shown from a minutes-old health snapshot overstated a 4-second dip, so "power low now" is read live; and the wording swung from too rosy ("mostly fine") to too alarming ("can corrupt the memory card") before settling on the evidence: short dips are notes, because none caused a failure.
 
