@@ -19,6 +19,21 @@
     background-size: 100% 100%; filter: blur(40px); animation: shimmer 38s ease-in-out infinite alternate; }
   @media (prefers-color-scheme: dark) { body::before { opacity: .09; } }
   @keyframes shimmer { from { transform: translate(-8%, -6%) rotate(0deg) scale(1.1); } to { transform: translate(8%, 6%) rotate(25deg) scale(1.25); } }
+  .checks { margin: 10px 0 4px; }
+  .checks-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+  .check-row { display: flex; gap: 10px; overflow-x: auto; padding: 2px 2px 8px; scroll-snap-type: x proximity; }
+  .check { flex: 0 0 168px; scroll-snap-align: start; border: 2px solid var(--line); border-radius: 14px; padding: 8px;
+           background: color-mix(in srgb, var(--bg) 70%, transparent); font-size: 13px; }
+  .check.yes { border-color: var(--ok); } .check.no { border-color: var(--line); } .check.empty { flex-basis: auto; color: var(--soft); }
+  .check .thumb { display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 9px; background: var(--line) center / cover no-repeat;
+                  border: 0; padding: 0; cursor: zoom-in; color: var(--soft); font-size: 12px; }
+  .check .verdict { display: flex; justify-content: space-between; align-items: center; margin: 6px 0 2px; font-weight: 700; font-size: 14px; }
+  .check .verdict span:last-child { font-weight: 400; font-size: 12px; color: var(--soft); }
+  .check .label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .check .meta { color: var(--soft); font-size: 12px; }
+  .check .bar { width: 100%; margin: 3px 0; }
+  .check.fresh { animation: fresh 2.5s ease-out; }
+  @keyframes fresh { 0%, 30% { box-shadow: 0 0 0 4px var(--info); } 100% { box-shadow: 0 0 0 4px transparent; } }
   .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
   .arm { position: relative; overflow: hidden; display: inline-flex; align-items: center; gap: 10px; margin: 12px 0 4px; padding: 7px 16px 7px 12px;
          border: 2px solid var(--line); border-radius: 999px; background: var(--card-bg, transparent); min-width: 250px; }
@@ -194,6 +209,11 @@
 </div>
 <div class="arm wait" id="arm" role="status" aria-live="polite"><span class="led"></span><span><b id="armTitle">Motion sensor…</b><small id="armSub">connecting</small></span><i id="armBar"></i></div>
 </div>
+
+<section class="checks" aria-label="Last checks">
+  <div class="checks-head"><b>🔍 Last checks</b><a href="#visits" class="more-link" data-goto="visits">all visits →</a></div>
+  <div class="check-row" id="checks"><div class="check empty">Waiting for the first check…</div></div>
+</section>
 
 <section id="fun">
   <div class="card mood warn" id="mood"><div class="big">🐦</div><div><div class="title">Connecting to the crow office…</div><div class="sub">one sec</div></div></div>
@@ -731,6 +751,56 @@ function renderArm() {
 }
 setInterval(() => { if (!document.hidden) safely(renderArm); }, 1000);
 
+// Last checks: the newest visits with a thumbnail of the photo that scored highest, cropped to the tray.
+const thumbs = new Map();  // "batch/file" -> data URL, "" while loading, null if the photo is gone
+let lastChecksKey = "", newestCheck = null;
+async function loadThumb(batch, file, tray) {
+  const key = `${batch}/${file}`;
+  if (thumbs.has(key)) return;
+  thumbs.set(key, "");
+  try {
+    const blob = await (await api(`/api/photo?batch=${encodeURIComponent(batch)}&file=${encodeURIComponent(file)}`)).blob();
+    const image = await createImageBitmap(blob);
+    const [x0, y0, x1, y1] = Array.isArray(tray) && tray.length === 4 ? tray : [0, 0, 1, 1];
+    const sx = x0 * image.width, sy = y0 * image.height, sw = (x1 - x0) * image.width, sh = (y1 - y0) * image.height;
+    const canvas = document.createElement("canvas"); canvas.width = 320; canvas.height = Math.round(320 * sh / sw);
+    canvas.getContext("2d").drawImage(image, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+    thumbs.set(key, canvas.toDataURL("image/jpeg", 0.8)); image.close();
+  } catch (error) { thumbs.set(key, null); }
+  lastChecksKey = ""; safely(renderChecks);
+}
+function renderChecks() {
+  const rows = logs.detect.rows.filter((r) => r.decision).slice(-6).reverse();
+  if (!rows.length) return;
+  const key = rows.map((r) => `${r.batch}:${thumbs.get(r.batch) || ""}`).join() + [...thumbs.values()].filter((v) => v).length + Math.floor(Date.now() / 30000);
+  if (key === lastChecksKey) return; lastChecksKey = key;
+  const fresh = newestCheck !== null && rows[0].batch !== newestCheck; newestCheck = rows[0].batch;
+  $("checks").innerHTML = rows.map((r, i) => {
+    const top = best(r), file = top ? `image-${String(top.photo).padStart(2, "0")}.jpg` : "image-01.jpg";
+    const thumb = r.photos_taken ? thumbs.get(`${r.batch}/${file}`) : null;
+    if (r.photos_taken && !thumbs.has(`${r.batch}/${file}`)) loadThumb(r.batch, file, r.tray);
+    const yes = r.decision === "YES", score = top ? top.cap_score : null;
+    const failed = r.servo && r.servo.outcome && r.servo.outcome !== "DONE";
+    const when = r.wall_clock_unreliable ? ago((Date.now() - new Date(r.wall_clock_unreliable)) / 1000) : "";
+    const picture = thumb ? `<button class="thumb" style="background-image:url('${thumb}')" data-batch="${escapeHtml(r.batch)}" data-file="${file}" title="Open the full photo" aria-label="Open the full photo"></button>`
+      : `<div class="thumb" style="display:grid;place-items:center;cursor:default">${thumb === null ? "📷 photo not kept" : "📷 loading…"}</div>`;
+    return `<div class="check ${yes ? "yes" : "no"}${fresh && i === 0 ? " fresh" : ""}">${picture}` +
+      `<div class="verdict"><span>${yes ? "👑 YES" : "🙅 NO"}${r.reward ? " 🥜" : ""}${failed ? " ⚠️" : ""}</span><span title="${escapeHtml(fmtTime(r.wall_clock_unreliable))}">${when}</span></div>` +
+      `<div class="label" title="Best guess of the model">${escapeHtml(top ? top.top_label : "–")}</div>` +
+      (score != null ? bar(score, r.accept, yes) : "") +
+      `<div class="meta">cap ${score != null ? score.toFixed(2) : "–"} · ${r.photos_taken || 0} photo${r.photos_taken === 1 ? "" : "s"} · ${r.trigger_to_decision_seconds != null ? r.trigger_to_decision_seconds.toFixed(1) + " s" : "–"}</div></div>`;
+  }).join("");
+}
+document.querySelector(".checks").addEventListener("click", async (event) => {
+  const link = event.target.closest("a[data-goto]");
+  if (link) { event.preventDefault(); return goTo(link.dataset.goto); }
+  const button = event.target.closest("button[data-batch]"); if (!button) return;
+  try {
+    const blob = await (await api(`/api/photo?batch=${encodeURIComponent(button.dataset.batch)}&file=${encodeURIComponent(button.dataset.file)}`)).blob();
+    window.open(URL.createObjectURL(blob), "_blank");
+  } catch (error) { alert("📷 Photo not available: " + error.message); }
+});
+
 async function pollNow() {
   clearTimeout(nowTimer);
   if (document.hidden) return;  // nothing is read while the page is in the background
@@ -793,7 +863,7 @@ async function doRefresh(withHealth) {
     if (withHealth) health = await (await api("/api/health")).json();
     lastSync = new Date(); failures = 0;
   } catch (error) { failures++; $("status").textContent = error.message; }
-  safely(render); safely(assess); safely(renderFun);
+  safely(render); safely(assess); safely(renderFun); safely(renderChecks);
 }
 
 let timer = null, idle = 0;
