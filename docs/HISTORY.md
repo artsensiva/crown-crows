@@ -76,3 +76,7 @@ Lessons: an alarm shown from a minutes-old health snapshot overstated a 4-second
 - Two threads removed the recognition dips and were faster in real visits (1.27 s instead of about 2 s per photo); a bench check with the detector stopped showed four threads are fastest on their own (0.76 s), so the slowdown came from the sagging supply. Three threads: 0.95 s per photo, YES in 2.6 s, NO in 6.5 s, no recognition dips; now the default.
 - With recognition dips gone, the servo's own dips showed: on tilts to the reward side only. A slower servo ramp did not help and was reverted ([POWER](POWER.md#measurements-2026-10-17)).
 - All 126 kept visits were reviewed by eye: 113 right, 9 round non-caps accepted, 2 caps missed at the edge of the view. No threshold separates the mistakes; the owner accepted this as a known limit rather than add checks ([RECOGNITION](RECOGNITION.md#review-of-all-kept-visits-2026-10-17-known-limit-accepted)).
+
+## 2026-10-17: Capacitor removed
+
+The owner removed the 2200 µF capacitor at the servo. Over 8 visits without it (3 recognition threads), a dip began during 3 of 16 servo moves, all tilts to the dump side, with no dip while recognising and no failure. With it, the counts had ranged from none to every tilt to the reward side between tests, so it showed no clear benefit ([POWER](POWER.md#measurements-2026-10-17)).

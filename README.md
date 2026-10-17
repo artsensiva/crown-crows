@@ -106,7 +106,7 @@ Measured **on the Raspberry Pi 3**:
 | PIR motion sensor HC-SR501 on GPIO17 | Wakes the system when a crow arrives; both potentiometers at minimum, jumper on H; a short tube narrows the zone ([HARDWARE](docs/HARDWARE.md#pir-settings-owner-2026-10-14)) |
 | RGB LED module on GPIO27/22/23 (white LED strip via MOSFET planned) | The intake is dark, so this is the only light the camera sees |
 | JAMARA 033212 micro servo on GPIO18 (hardware PWM) | Tips the tray: centre 1500 µs, reward side 2500 µs, dump side 605 µs |
-| Power: USB supply today, a power bank for autonomy | The servo runs from the Pi's 5 V pin with a 2200 µF capacitor; short dips occur but have caused no failure. A power-bank build should give the servo its own port ([POWER](docs/POWER.md)) |
+| Power: USB supply today, a power bank for autonomy | The servo runs from the Pi's 5 V pin, without a capacitor (one was tested and showed no clear benefit); short dips occur but have caused no failure. A power-bank build should give the servo its own port ([POWER](docs/POWER.md)) |
 
 The planned housing (food on top, intake and ledge in the middle, waste below), its mechanisms, materials and mounting options are in [MECHANICS](docs/MECHANICS.md).
 

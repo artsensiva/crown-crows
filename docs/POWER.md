@@ -41,16 +41,17 @@ Apply on the Pi and test each one; some make local access harder.
 
 ## Measurements 2026-10-17
 
-The servo stays on the Pi's 5 V pin (owner's decision); a 2200 µF / 63 V electrolytic capacitor was fitted across its + and − wires. The dashboard sorts every kernel undervoltage report by what the box was doing, and the servo log records whether a dip began during a move ([MONITOR](MONITOR.md#where-the-power-dips-come-from)).
+The servo stays on the Pi's 5 V pin (owner's decision); a 2200 µF / 63 V electrolytic capacitor across its + and − wires was tested and later removed. The dashboard sorts every kernel undervoltage report by what the box was doing, and the servo log records whether a dip began during a move ([MONITOR](MONITOR.md#where-the-power-dips-come-from)).
 
 | Setting | Dips while photographing and recognising | Dips beginning during servo moves |
 |---|---|---|
 | 4 recognition threads | every visit (9 of 9) | not separable (the Pi was still low from recognition) |
 | 2 threads | none | every tilt to the reward side (7 of 7) |
 | 2 threads, slower servo ramp | none | every tilt to the reward side; none to the dump side |
-| 3 threads (production) | none | none in 14 moves (unexplained; to be watched) |
+| 3 threads (production), with the capacitor | none | none in 14 moves in one test, 1 in 14 in a later one |
+| 3 threads, capacitor removed (8 visits) | none | 3 of 16 moves (all tilts to the dump side), plus one dip right after a return to the centre |
 
-Conclusions: four recognition threads together with camera and light drew more than the supply could hold, and the Pi slowed its CPU; three threads avoid that and decide faster. The servo still causes short dips on the reward side; the capacitor did not remove them. **No crash, restart or failed stroke has come from any dip**, so the dashboard shows them as notes. Still to check: the power supply's rating and cable, and whether the tray meets resistance on the reward side.
+Conclusions: four recognition threads together with camera and light drew more than the supply could hold, and the Pi slowed its CPU; three threads avoid that and decide faster. The servo still causes short dips on some tilts, on either side from test to test; with or without the capacitor the counts stay small and vary more between tests than between the two set-ups, so the capacitor showed no clear benefit and was removed (owner, 2026-10-17). **No crash, restart or failed stroke has come from any dip**, so the dashboard shows them as notes. Still to check: the power supply's rating and cable, and whether the tray meets resistance on the reward side.
 
 ## Power bank: what to look for
 
