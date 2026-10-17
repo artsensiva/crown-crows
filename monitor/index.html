@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Crown Crows · Monitoring</title>
+<link rel="icon" id="favicon" href="data:,">
 <style>
   :root { --ink: #1b1f23; --soft: #5a636b; --line: #d8dde1; --bad: #b3261e; --ok: #1d7a43; --warn: #a15c00; --info: #1f5fa8; --bg: #ffffff;
           --bad-bg: #fdecea; --ok-bg: #e8f5ec; --warn-bg: #fff4e0; --info-bg: #e8f0fb; --track: #e7eaed; }
@@ -214,6 +215,26 @@ function render() {
 
 let current = null, nowTimer = null, lastSeen = null, nowFailed = false, previousNow = {}, nowReceived = null;
 
+function capIcon(status) {
+  // Crown cap (21 teeth) on a dark tile, with a status dot in the corner.
+  let teeth = "";
+  for (let i = 0; i < 42; i++) {
+    const a = Math.PI * 2 * i / 42, r = i % 2 ? 11.2 : 13;
+    teeth += `${(16 + r * Math.cos(a)).toFixed(2)},${(16 + r * Math.sin(a)).toFixed(2)} `;
+  }
+  const colour = { ok: "#2fbf5f", warn: "#f0a020", bad: "#e5483b" }[status];
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="7" fill="#1f2a2e"/>` +
+    `<polygon points="${teeth}" fill="#d4a93a"/><circle cx="16" cy="16" r="8.6" fill="#e7c25a" stroke="#9c7a24" stroke-width="1"/>` +
+    (colour ? `<circle cx="25.5" cy="25.5" r="5.5" fill="${colour}" stroke="#1f2a2e" stroke-width="1.5"/>` : "") + `</svg>`;
+  return "data:image/svg+xml," + encodeURIComponent(svg);
+}
+let iconStatus = null;
+function setIcon(status) {
+  if (status === iconStatus) return;  // only when the status changes
+  iconStatus = status;
+  $("favicon").href = capIcon(status);
+}
+
 function assess() {
   // Overall status from data already on the page; nothing extra is read.
   const problems = [], warnings = [];
@@ -235,6 +256,7 @@ function assess() {
   if (recentMoves.some((r) => r.power_warnings > 0)) warnings.push("undervoltage during recent servo moves");
   const banner = $("banner");
   banner.className = "banner " + (problems.length ? "bad" : warnings.length ? "warn" : "ok");
+  setIcon(problems.length ? "bad" : warnings.length ? "warn" : "ok");
   banner.innerHTML = problems.length ? `Problem <span>${escapeHtml([...problems, ...warnings].join(" · "))}</span>`
     : warnings.length ? `Attention <span>${escapeHtml(warnings.join(" · "))}</span>` : "All systems normal";
   const age = n ? Date.now() / 1000 - n.read_at : Infinity;
@@ -342,6 +364,7 @@ setInterval(() => {  // local clock only: shows how old the live data is; no req
   live.className = "live" + (age >= 60 ? " off" : age >= 10 ? " stale" : "");
   $("liveText").textContent = `LIVE · updated ${Math.round(age)} s ago · every 3 s`;
 }, 1000);
+setIcon(null);
 renderNow();
 refresh(true).then(schedule);
 pollNow();
