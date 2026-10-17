@@ -36,6 +36,9 @@
   <span><button id="csv">Export CSV</button> <button id="json">Export JSON</button></span>
 </header>
 
+<h2>Now</h2>
+<table class="kv" id="now"></table>
+
 <div class="grid">
   <section>
     <h2>Summary</h2>
@@ -178,6 +181,36 @@ function render() {
   $("status").textContent = lastSync ? `Data as of ${lastSync.toLocaleTimeString()} · ${rows.length} visits${failures ? " · connection problem" : ""}` : "Connecting…";
 }
 
+let current = null, nowTimer = null, lastSeen = null, nowFailed = false;
+const ago = (seconds) => seconds < 90 ? `${Math.round(seconds)} s ago` : seconds < 5400 ? `${Math.round(seconds / 60)} min ago` : `${(seconds / 3600).toFixed(1)} h ago`;
+function renderNow() {
+  const n = current;
+  if (!n) { $("now").innerHTML = kv([["State", nowFailed ? "Not available" : "Loading…"]]); return; }
+  const v = n.last_visit, s = n.servo;
+  const servoNames = { home: "centre (home)", dump_reward: "reward side", dump_only: "dump side", moving: "moving" };
+  $("now").innerHTML = kv([
+    ["State", n.state, n.state.startsWith("detector") ? "bad" : n.state.startsWith("ready") ? "ok" : ""],
+    ["Motion sensor", n.motion == null ? "–" : n.motion ? "motion (HIGH)" : "no motion (LOW)"],
+    ["Light", n.light || "–"],
+    ["Servo", s ? `${servoNames[s.position] || s.position} · ${s.pulse_us} µs · ${s.holding ? "holding" : "pulses off"}` : "–"],
+    ["Last visit", v ? `${v.decision} · ${ago(n.read_at - new Date(v.wall_clock_unreliable).getTime() / 1000)} (${v.boot}-${v.sequence})` : "–"],
+    ["CPU load (1 min)", n.load_1min.toFixed(2) + " of 4 cores"],
+  ]);
+}
+async function pollNow() {
+  clearTimeout(nowTimer);
+  if (document.hidden) return;  // nothing is read while the page is in the background
+  try {
+    current = await (await api("/api/now")).json();
+    const key = current.last_visit ? `${current.last_visit.boot}-${current.last_visit.sequence}` : null;
+    if (lastSeen !== null && key !== lastSeen) { idle = 0; await refresh(false); }  // a new visit: fetch its record now
+    lastSeen = key;
+    nowFailed = false;
+  } catch (error) { current = null; nowFailed = true; }
+  renderNow();
+  nowTimer = setTimeout(pollNow, 3000);
+}
+
 async function refresh(withHealth) {
   try {
     await syncLog("detect"); await syncLog("servo");
@@ -198,7 +231,7 @@ function schedule() {
     schedule();
   }, Math.min(30000, 5000 + idle * 2500));  // 5 s, slowing to 30 s while nothing happens
 }
-document.addEventListener("visibilitychange", () => { if (!document.hidden) { idle = 0; refresh(true).then(schedule); } else clearTimeout(timer); });
+document.addEventListener("visibilitychange", () => { if (!document.hidden) { idle = 0; refresh(true).then(schedule); pollNow(); } else { clearTimeout(timer); clearTimeout(nowTimer); } });
 
 $("visits").addEventListener("click", async (event) => {
   const link = event.target.closest("a[data-batch]"); if (!link) return;
@@ -226,7 +259,9 @@ $("csv").addEventListener("click", () => {
   download("crown-crows-visits.csv", [head, ...lines].map((row) => row.map((v) => `"${String(v ?? "").replace(/"/g, '""')}"`).join(",")).join("\n"), "text/csv");
 });
 
+renderNow();
 refresh(true).then(schedule);
+pollNow();
 </script>
 </body>
 </html>

@@ -68,6 +68,83 @@ def health():
     }
 
 
+SERVO_SETTINGS = ROOT / "config/local.servo.json"
+PWM = Path("/sys/class/pwm/pwmchip0/pwm0")
+
+
+def last_visit():
+    # The last record only: the end of detect.jsonl, a few kilobytes.
+    path = LOGS["detect"]
+    if not path.exists():
+        return None
+    with path.open("rb") as handle:
+        handle.seek(max(0, path.stat().st_size - 8192))
+        lines = handle.read().splitlines()
+    for line in reversed(lines):
+        try:
+            return json.loads(line)
+        except ValueError:
+            continue
+    return None
+
+
+def now_reading(server):
+    # What the box is doing right now, from cheap reads only: GPIO levels
+    # (one pinctrl call), the PWM duty cycle, the end of the visit log and the
+    # detector's start time (systemctl, at most once a minute). Nothing in the
+    # detector is touched.
+    reading = {"read_at": time.time()}
+    levels = {}
+    for line in run(["pinctrl", "get", "17,22,23,27"]).splitlines():
+        match = re.match(r"\s*(\d+):.*\|\s*(hi|lo)", line)
+        if match:
+            levels[int(match.group(1))] = match.group(2) == "hi"
+    reading["motion"] = levels.get(17)
+    # RGB module, active-low: a channel is lit when its pin is low.
+    lit = [not levels[pin] for pin in (27, 22, 23) if pin in levels]
+    reading["light"] = None if len(lit) < 3 else ("off" if not any(lit) else "white" if all(lit) else
+                                                   "status " + "/".join(name for name, on in zip(("red", "green", "blue"), lit) if on))
+    try:
+        enabled = (PWM / "enable").read_text().strip() == "1"
+        pulse = int((PWM / "duty_cycle").read_text()) // 1000
+        positions = json.loads(SERVO_SETTINGS.read_text()) if SERVO_SETTINGS.exists() else {}
+        named = [name for name in ("home", "dump_reward", "dump_only")
+                 if isinstance(positions.get(name), int) and abs(positions[name] - pulse) <= 30]
+        reading["servo"] = {"pulse_us": pulse, "holding": enabled, "position": named[0] if named else "moving"}
+    except (OSError, ValueError):
+        reading["servo"] = None
+    if time.monotonic() - server.service_at > 60:
+        info = dict(line.split("=", 1) for line in run(
+            ["systemctl", "--user", "show", "crown-crows-detect", "-p", "ActiveState",
+             "-p", "ActiveEnterTimestampMonotonic"]).splitlines() if "=" in line)
+        server.service_info, server.service_at = info, time.monotonic()
+    info = server.service_info
+    uptime = float(Path("/proc/uptime").read_text().split()[0])
+    started = int(info.get("ActiveEnterTimestampMonotonic", "0") or 0) / 1e6
+    running_for = uptime - started if started else None
+    visit = last_visit()
+    trigger = None
+    if visit and visit.get("wall_clock_unreliable") and visit.get("trigger_to_decision_seconds") is not None:
+        from datetime import datetime
+        trigger = datetime.fromisoformat(visit["wall_clock_unreliable"]).timestamp() - visit["trigger_to_decision_seconds"]
+    ignore_left = max(0.0, trigger + 25 - time.time()) if trigger else 0.0
+    if info.get("ActiveState") != "active":
+        state = f"detector {info.get('ActiveState', 'unknown')}"
+    elif running_for is not None and running_for < 75:
+        state = f"starting: model, exposure, PIR warm-up (ready in about {75 - running_for:.0f} s)"
+    elif reading["light"] == "white":
+        state = "visit in progress: taking photos"
+    elif ignore_left > 0:
+        state = f"visit done; new triggers ignored for {ignore_left:.0f} s"
+    else:
+        state = "ready: waiting for a crow"
+    reading.update({"state": state, "detector_running_seconds": running_for,
+                    "load_1min": float(Path("/proc/loadavg").read_text().split()[0]),
+                    "last_visit": {key: visit.get(key) for key in ("boot", "sequence", "wall_clock_unreliable",
+                                                                   "decision")} if visit else None})
+    return reading
+
+
 def errors():
     service = run(["journalctl", "--user", "-u", "crown-crows-detect", "-p", "warning", "-n", "50", "-o",
                    "short-iso", "--no-pager"], timeout=15)
@@ -137,6 +214,8 @@ class Handler(BaseHTTPRequestHandler):
                 if now - self.server.health_at > 10:
                     self.server.health_cache, self.server.health_at = health(), now
                 return self.send(200, json.dumps(self.server.health_cache).encode())
+            if url.path == "/api/now":
+                return self.send(200, json.dumps(now_reading(self.server)).encode())
             if url.path == "/api/errors":
                 return self.send(200, json.dumps(errors()).encode())
             return self.fail(404, "not found")
@@ -152,6 +231,7 @@ def main():
     else:  # manual start for testing: python monitor/server.py [port]
         server = HTTPServer(("", int(sys.argv[1]) if len(sys.argv) > 1 else 8080), Handler)
     server.token, server.health_at, server.health_cache = token, 0.0, {}
+    server.service_at, server.service_info = -1e9, {}
     server.last_request = time.monotonic()
     server.timeout = 5
     while time.monotonic() - server.last_request < IDLE_SECONDS:
