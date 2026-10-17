@@ -106,8 +106,8 @@ Measured on 2026-10-17 after fitting a 2200 µF capacitor at the servo, over 9 v
 
 ## 🎯 Threshold from the dashboard (home network only)
 
-Under 🔍 Last checks (both modes): a slider for the recognition threshold (0.30–0.99) with a live preview from the logged visits: a scale with every visit's best score (green = was YES, grey = was NO, outlined = would flip), how many YES would become NO (an estimate: a YES stopped at the first photo above the old threshold) and how many NO would become YES (exact: a NO analysed all five photos), and what the last visit would have been. **Save** writes `config/local.accept.json`; the detector reads it at the start of every visit (no restart), and each visit record keeps the threshold it used. Without the file, `--accept` from the service applies.
+Under 🔍 Last checks (both modes, home network only): a slider for the recognition threshold (0.30–0.99) with a live preview from the logged visits: a scale with every visit's best score (green = was YES, grey = was NO, outlined = would flip), how many YES would become NO (an estimate: a YES stopped at the first photo above the old threshold) and how many NO would become YES (exact: a NO analysed all five photos), and what the last visit would have been. **Save** writes `config/local.accept.json`; the detector reads it at the start of every visit (no restart), and each visit record keeps the threshold it used. Without the file, `--accept` from the service applies.
 
-Changing it works only from the home network (as Power off): from the internet the slider, preview and Save are not shown, only the current value and the scale, and the server refuses a change (403).
+The block exists only on the home network (as Power off): from the internet it is not shown at all, and the server refuses a change (403).
 
 Trade-off on the 126 reviewed visits of 2026-10-17 (84 caps, 9 accepted non-caps): 0.70 refuses 2 caps and still accepts 8 non-caps; 0.80: 4 caps refused, 6 non-caps accepted; 0.85: 11 / 5; 0.90: 14 / 5; 0.95: 17 / 1.
