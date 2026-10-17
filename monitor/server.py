@@ -70,6 +70,9 @@ def health():
 
 SERVO_SETTINGS = ROOT / "config/local.servo.json"
 PWM = Path("/sys/class/pwm/pwmchip0/pwm0")
+# The kernel's Pi voltage monitor: 1 while the 5 V supply is below about 4.63 V (a cheap file read).
+VOLT_ALARM = next((d / "in0_lcrit_alarm" for d in Path("/sys/class/hwmon").glob("hwmon*")
+                   if (d / "name").exists() and (d / "name").read_text().strip() == "rpi_volt"), None)
 
 
 def last_visit():
@@ -150,7 +153,8 @@ def now_reading(server):
                     "cpu_temp_c": read_number("/sys/class/thermal/thermal_zone0/temp", 1000),
                     "memory_available_mb": round(meminfo.get("MemAvailable", 0) / 1024),
                     "memory_total_mb": round(meminfo.get("MemTotal", 0) / 1024),
-                    "disk_free_gb": round(disk.free / 1e9, 1), "disk_total_gb": round(disk.total / 1e9, 1)})
+                    "disk_free_gb": round(disk.free / 1e9, 1), "disk_total_gb": round(disk.total / 1e9, 1),
+                    "power_low": read_number(VOLT_ALARM, 1) == 1 if VOLT_ALARM else None})
     reading.update({"state": state, "detector_running_seconds": running_for,
                     "load_1min": float(Path("/proc/loadavg").read_text().split()[0]),
                     "last_visit": {key: visit.get(key) for key in ("boot", "sequence", "wall_clock_unreliable",

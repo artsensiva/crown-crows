@@ -434,7 +434,7 @@ const GUIDE = {
 const FUN = {
   no_connection: ["📡", "Can't reach the crow office", "Check the Pi has power and you're on the same Wi-Fi."],
   detector_down: ["😴", "The detector is napping", "It usually wakes up by itself within a minute."],
-  undervoltage_now: ["🪫", "The Pi is short of power right now", "Don't unplug anything; the capacitor at the servo is the fix."],
+  undervoltage_now: ["🪫", "The Pi's power is low at this moment", "Usually gone within seconds. If it lasts, check the power supply; don't unplug anything meanwhile."],
   undervoltage_boot: ["🧠", "The Pi's power dipped below safe since it started", "Fit the capacitor, then reboot once to clear this record. If dips still appear with the servo standing still, the capacitor was not enough."],
   servo_undervoltage: ["⚡🍝", "The servo briefly pulls the Pi's power down when it moves", "A 1000–2200 µF capacitor at the servo (on your list)."],
   servo_failure: ["🦾", "The tray arm got stuck", "Check nothing blocks the tray."],
@@ -443,12 +443,12 @@ const FUN = {
   disk: ["💾", "Running out of shelf space", "Move old photos off the Pi."],
   memory: ["🧠", "The Pi's head is full", "A reboot usually helps."],
 };
-const SEVERITY = { no_connection: "urgent", detector_down: "urgent", undervoltage_now: "urgent", servo_failure: "urgent",
+const SEVERITY = { no_connection: "urgent", detector_down: "urgent", undervoltage_now: "soon", servo_failure: "urgent",
   servo_undervoltage: "soon", hot: "soon", disk: "soon", memory: "soon", undervoltage_boot: "info", clock: "info" };
 const ISSUE_TARGET = { servo_undervoltage: "power", undervoltage_boot: "power", undervoltage_now: "health", clock: "health",
   hot: "now", disk: "now", memory: "now", servo_failure: "visits", detector_down: "health", no_connection: "now" };
 const SEVERITY_TEXT = { urgent: "🚨 urgent", soon: "🛠️ fix soon", info: "ℹ️ just so you know" };
-let openIssues = new Set(), lastIssuesHtml = "", lastFunIssuesHtml = "", lastLevel = "warn", lastIssues = [];
+let lowSince = null, openIssues = new Set(), lastIssuesHtml = "", lastFunIssuesHtml = "", lastLevel = "warn", lastIssues = [];
 let dipTimes = null, dipsFetchedAt = 0;  // kernel undervoltage events, read with the error log at most every 10 min
 async function fetchDips() {
   if (document.hidden || Date.now() - dipsFetchedAt < 600000) return;
@@ -483,7 +483,12 @@ function assess() {
   if (n && n.state.startsWith("detector")) issues.push(["detector_down", "bad", n.state]);
   if (h) {
     const since = `Pi started ${ago(h.uptime_seconds)}; flags ${h.throttled}`;
-    if (h.throttled_meaning.includes("undervoltage now")) issues.push(["undervoltage_now", "bad", since]);
+    // "Low right now" comes from the live 3-second reading; the health snapshot can be minutes old.
+    // A dip of a few seconds (a servo stroke) is a warning; only one that lasts 30 s or more is an alarm.
+    const lowNow = n && n.power_low != null ? n.power_low : h.throttled_meaning.includes("undervoltage now");
+    lowSince = lowNow ? lowSince || Date.now() : null;
+    const lowFor = lowSince ? (Date.now() - lowSince) / 1000 : 0;
+    if (lowNow) issues.push(["undervoltage_now", lowFor >= 30 ? "bad" : "warn", `low for ${Math.round(lowFor)} s now; ${since}`]);
     else if (h.throttled_meaning.includes("undervoltage since boot")) issues.push(["undervoltage_boot", "warn", since]);
     if (!h.clock_synchronized) issues.push(["clock", "warn", "the Pi reports no network time"]);
   }
@@ -678,6 +683,7 @@ function renderNow() {
     ["🦾 Servo", s ? dot(s.position === "home" ? "ok" : "info", s.position !== "home") + `${servoNames[s.position] || s.position} · ${s.pulse_us} µs · ${s.holding ? "holding" : "pulses off"}` : "–"],
     ["🕒 Last visit", v ? `${v.decision} · ${ago(n.read_at - new Date(v.wall_clock_unreliable).getTime() / 1000)} (${v.boot}-${v.sequence})` : "–"],
     ["🏋️ CPU load (1 min)", n.load_1min.toFixed(2) + " of 4 cores", n.load_1min > 3.5 ? "warn" : ""],
+    ["🔌 5 V supply", n.power_low == null ? "–" : n.power_low ? `low (below 4.63 V) for ${Math.round((Date.now() - lowSince) / 1000) || 0} s` : "OK", n.power_low ? "warn" : ""],
     ["🌡️ CPU clock · temperature", `${n.cpu_mhz != null ? Math.round(n.cpu_mhz) + " MHz" : "–"} · ${n.cpu_temp_c != null ? n.cpu_temp_c.toFixed(1) + " °C" : "–"}`, n.cpu_temp_c >= 80 ? "bad" : n.cpu_temp_c >= 70 ? "warn" : ""],
     ["🧠 Memory available", `${n.memory_available_mb} of ${n.memory_total_mb} MB`, n.memory_available_mb < 100 ? "warn" : ""],
     ["💾 Disk free", `${n.disk_free_gb} of ${n.disk_total_gb} GB`, n.disk_free_gb < 0.05 * n.disk_total_gb ? "bad" : n.disk_free_gb < 0.15 * n.disk_total_gb ? "warn" : ""],
