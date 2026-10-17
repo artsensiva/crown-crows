@@ -22,7 +22,7 @@
   .checks { margin: 10px 0 4px; }
   .checks-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
   .check-row { display: flex; gap: 10px; overflow-x: auto; padding: 2px 2px 8px; scroll-snap-type: x proximity; }
-  .check { flex: 0 0 168px; scroll-snap-align: start; border: 2px solid var(--line); border-radius: 14px; padding: 8px;
+  .check { flex: 1 1 0; min-width: 170px; max-width: 300px; scroll-snap-align: start; border: 2px solid var(--line); border-radius: 14px; padding: 8px;
            background: color-mix(in srgb, var(--bg) 70%, transparent); font-size: 13px; }
   .check.yes { border-color: var(--ok); } .check.no { border-color: var(--line); } .check.empty { flex-basis: auto; color: var(--soft); }
   .check .thumb { display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 9px; background: var(--line) center / cover no-repeat;
@@ -215,7 +215,7 @@
 </div>
 
 <section class="checks" aria-label="Last checks">
-  <div class="checks-head"><b>🔍 Last checks</b> <small style="color:var(--soft)">one card per object · thumbnail = best photo · numbers = all photos</small><a href="#visits" class="more-link" data-goto="visits">all visits →</a></div>
+  <div class="checks-head"><b>🔍 Last checks</b> <small style="color:var(--soft)">the 3 latest visits · thumbnail = best photo · numbers = all photos</small><a href="#visits" class="more-link" data-goto="visits">all visits →</a></div>
   <div class="check-row" id="checks"><div class="check empty">Waiting for the first check…</div></div>
 </section>
 
@@ -774,7 +774,7 @@ async function loadThumb(batch, file, tray) {
   lastChecksKey = ""; safely(renderChecks);
 }
 function renderChecks() {
-  const rows = logs.detect.rows.filter((r) => r.decision).slice(-6).reverse();
+  const rows = logs.detect.rows.filter((r) => r.decision).slice(-3).reverse();
   if (!rows.length) return;
   const key = rows.map((r) => `${r.batch}:${thumbs.get(r.batch) || ""}`).join() + [...thumbs.values()].filter((v) => v).length + Math.floor(Date.now() / 30000);
   if (key === lastChecksKey) return; lastChecksKey = key;
