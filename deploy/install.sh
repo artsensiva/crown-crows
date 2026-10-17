@@ -79,8 +79,14 @@ else
 fi
 mkdir -p "$HOME/.config/systemd/user" logs captures config
 cp deploy/crown-crows-detect.service "$HOME/.config/systemd/user/"
+# Monitoring dashboard (docs/MONITOR.md): socket-activated, read-only; a
+# random access token is created once and kept in config/.
+[ -f config/local.monitor.json ] || python3 -c 'import json, secrets; print(json.dumps({"token": secrets.token_urlsafe(18)}))' > config/local.monitor.json
+chmod 600 config/local.monitor.json
+cp deploy/crown-crows-monitor.socket deploy/crown-crows-monitor.service "$HOME/.config/systemd/user/"
 systemctl --user daemon-reload
 systemctl --user enable crown-crows-detect
+systemctl --user enable --now crown-crows-monitor.socket
 
 step "8/8 Checks and self-test"
 rpicam-hello --list-cameras 2>&1 | grep -E "imx|No cameras" || echo "camera list not available"
@@ -108,3 +114,4 @@ else
     systemctl --user restart crown-crows-detect
     printf '\nDone. The service is running: blue while starting, three green flashes when ready (about 2 minutes).\n'
 fi
+printf 'Monitoring: http://%s:8080/#token=%s\n' "$(hostname -I | cut -d' ' -f1)" "$(python3 -c 'import json; print(json.load(open("config/local.monitor.json"))["token"])')"

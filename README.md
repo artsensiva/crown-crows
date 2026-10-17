@@ -172,7 +172,7 @@ The author's own unit is installed exactly this way. **Updating** later is one c
 
 ## Operating it
 
-The service starts by itself at boot and needs no network. Useful commands on the Pi:
+The service starts by itself at boot and needs no network. On the local network, a **monitoring dashboard** shows visits, decisions, photos and device health on a phone or computer; it runs only while someone looks ([MONITOR](docs/MONITOR.md)). Useful commands on the Pi:
 
 ```bash
 systemctl --user status crown-crows-detect                     # is it running?
@@ -238,6 +238,7 @@ crown-crows/
 | [DEPLOY](docs/DEPLOY.md) | Installing, setting up and updating a unit |
 | [TESTING](docs/TESTING.md) | Test from a cold start without network |
 | [OPERATIONS](docs/OPERATIONS.md) | Offline operation, reading results, shutdown |
+| [MONITOR](docs/MONITOR.md) | Monitoring dashboard for a phone or computer |
 | [ROADMAP](docs/ROADMAP.md) | Next steps, open decisions, version 2 |
 | [HISTORY](docs/HISTORY.md) | Dated record of findings and decisions |
 

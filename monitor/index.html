@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Crown Crows · Monitoring</title>
+<style>
+  :root { --ink: #1b1f23; --soft: #5a636b; --line: #d8dde1; --bad: #a3261b; --ok: #1d6b3a; --bg: #ffffff; }
+  @media (prefers-color-scheme: dark) { :root { --ink: #e6e9ec; --soft: #9aa4ad; --line: #3a4148; --bad: #ff8a80; --ok: #7bd88f; --bg: #15181b; } }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 1100px; margin: 0 auto; padding: 16px; }
+  header { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: baseline; justify-content: space-between; border-bottom: 1px solid var(--line); padding-bottom: 8px; }
+  h1 { font-size: 18px; margin: 0; font-weight: 600; }
+  h2 { font-size: 14px; margin: 24px 0 6px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--soft); }
+  .meta { color: var(--soft); font-size: 13px; }
+  button { font: inherit; padding: 4px 10px; border: 1px solid var(--line); background: transparent; color: var(--ink); border-radius: 3px; cursor: pointer; min-height: 32px; }
+  .scroll { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+  th, td { text-align: left; padding: 4px 10px 4px 0; border-bottom: 1px solid var(--line); white-space: nowrap; vertical-align: top; }
+  th { font-weight: 600; color: var(--soft); }
+  td.num, th.num { text-align: right; }
+  .kv th { width: 45%; font-weight: 400; }
+  .bad { color: var(--bad); } .ok { color: var(--ok); }
+  .note { color: var(--soft); font-size: 12.5px; margin: 6px 0 0; }
+  pre { white-space: pre-wrap; font-size: 12px; margin: 4px 0; }
+  a { color: inherit; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 0 32px; }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>Crown Crows · Monitoring</h1>
+  <span class="meta" id="status">Connecting…</span>
+  <span><button id="csv">Export CSV</button> <button id="json">Export JSON</button></span>
+</header>
+
+<div class="grid">
+  <section>
+    <h2>Summary</h2>
+    <table class="kv" id="summary"></table>
+    <p class="note">Decisions are software decisions. "Reward command" = servo stroke to the reward side completed; food delivery is not measured. Scores are model similarity scores, not calibrated probabilities. Times come from the Pi clock, which is unverified while the Pi is offline.</p>
+  </section>
+  <section>
+    <h2>Device (live)</h2>
+    <table class="kv" id="health"></table>
+  </section>
+</div>
+
+<h2>Per day</h2>
+<div class="scroll"><table id="days"></table></div>
+
+<h2>Recent visits</h2>
+<div class="scroll"><table id="visits"></table></div>
+
+<h2>Errors and power</h2>
+<table class="kv" id="power"></table>
+<p><button id="loadErrors">Load errors from the system log</button></p>
+<div id="errors"></div>
+</main>
+
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const token = (() => {
+  const fromHash = new URLSearchParams(location.hash.slice(1)).get("token");
+  try { if (fromHash) { localStorage.setItem("cc-token", fromHash); history.replaceState(null, "", location.pathname); } } catch (e) {}
+  try { return fromHash || localStorage.getItem("cc-token") || prompt("Access token") || ""; } catch (e) { return fromHash || ""; }
+})();
+const logs = { detect: { offset: 0, inode: null, rows: [] }, servo: { offset: 0, inode: null, rows: [] } };
+let health = null, lastSync = null, failures = 0;
+
+async function api(path) {
+  const response = await fetch(path, { headers: { "X-Token": token }, cache: "no-store" });
+  if (response.status === 401) throw new Error("Access token rejected");
+  if (!response.ok) throw new Error("HTTP " + response.status);
+  return response;
+}
+const parse = (text) => text.split("\n").filter(Boolean).map((line) => { try { return JSON.parse(line); } catch (e) { return null; } }).filter(Boolean);
+
+async function syncLog(name) {
+  const log = logs[name];
+  let response = await api(`/api/log?name=${name}&from=${log.offset}`);
+  const inode = response.headers.get("X-Inode"), size = Number(response.headers.get("X-Size"));
+  if (log.inode !== null && (inode !== log.inode || size < log.offset)) {  // rotated: start over
+    log.offset = 0; log.rows = []; log.inode = null;
+    return syncLog(name);
+  }
+  if (log.inode === null) {  // first sync: older generation first
+    const older = await api(`/api/log?name=${name}.1&from=0`);
+    log.rows = parse(await older.text());
+  }
+  log.rows.push(...parse(await response.text()));
+  log.inode = inode; log.offset = Number(response.headers.get("X-Next"));
+  if (log.offset < size) return syncLog(name);  // more than one chunk
+}
+
+const fmtTime = (iso) => iso ? new Date(iso).toLocaleString(undefined, { dateStyle: "short", timeStyle: "medium" }) : "–";
+const dayKey = (iso) => { const d = new Date(iso); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
+const pct = (a, b) => b ? (100 * a / b).toFixed(1) + " %" : "–";
+const quantile = (values, q) => { if (!values.length) return null; const s = [...values].sort((a, b) => a - b); return s[Math.min(s.length - 1, Math.floor(q * s.length))]; };
+const sec = (v) => v == null ? "–" : v.toFixed(2) + " s";
+const best = (row) => (row.photos || []).reduce((top, p) => !top || p.cap_score > top.cap_score ? p : top, null);
+const escapeHtml = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+const kv = (rows) => rows.map(([k, v, cls]) => `<tr><th>${k}</th><td class="${cls || ""}">${v}</td></tr>`).join("");
+
+function stats(rows) {
+  const yes = rows.filter((r) => r.decision === "YES").length;
+  const rewards = rows.filter((r) => r.reward).length;
+  const servoFailed = rows.filter((r) => r.servo && r.servo.outcome !== "DONE").length;
+  const latency = rows.map((r) => r.trigger_to_decision_seconds).filter((v) => v != null);
+  const inference = rows.flatMap((r) => (r.photos || []).map((p) => p.analysis_seconds)).filter((v) => v != null);
+  return { n: rows.length, yes, no: rows.length - yes, rewards, servoFailed, latency, inference };
+}
+
+function render() {
+  const rows = logs.detect.rows.filter((r) => r.decision);
+  const today = dayKey(new Date().toISOString());
+  const all = stats(rows), now = stats(rows.filter((r) => dayKey(r.wall_clock_unreliable) === today));
+  const last = rows[rows.length - 1];
+  const both = (f) => `${f(now)} <span class="meta">today</span> · ${f(all)} <span class="meta">all</span>`;
+  $("summary").innerHTML = kv([
+    ["Visits", both((s) => s.n)],
+    ["YES / NO", both((s) => `${s.yes} / ${s.no}`)],
+    ["YES rate", both((s) => pct(s.yes, s.n))],
+    ["Reward commands", both((s) => s.rewards)],
+    ["Servo failures", both((s) => s.servoFailed), all.servoFailed ? "bad" : ""],
+    ["Decision time p50 / p95", `${sec(quantile(all.latency, .5))} / ${sec(quantile(all.latency, .95))}`],
+    ["Analysis per photo p50 / p95", `${sec(quantile(all.inference, .5))} / ${sec(quantile(all.inference, .95))}`],
+    ["Last visit", last ? `${fmtTime(last.wall_clock_unreliable)} · ${last.decision}` : "–"],
+    ["History", rows.length ? `${fmtTime(rows[0].wall_clock_unreliable)} – ${fmtTime(last.wall_clock_unreliable)}` : "–"],
+    ["Threshold · model", last ? `${last.accept} · ${String(last.model_sha256 || "not recorded").slice(0, 12)}` : "–"],
+  ]);
+
+  const h = health;
+  $("health").innerHTML = h ? kv([
+    ["Detector service", `${h.service_state} since ${h.service_since || "–"}`, h.service_state === "active" ? "ok" : "bad"],
+    ["Service restarts", h.service_restarts ?? "–"],
+    ["Uptime", (h.uptime_seconds / 3600).toFixed(1) + " h"],
+    ["Clock synchronized", h.clock_synchronized ? "yes" : "no (times unverified)", h.clock_synchronized ? "" : "bad"],
+    ["Throttling flags", `${h.throttled || "–"}${h.throttled_meaning.length ? " · " + h.throttled_meaning.join(", ") : ""}`, h.throttled_meaning.some((m) => m.includes("now")) ? "bad" : ""],
+    ["CPU temperature", h.temperature_c != null ? h.temperature_c.toFixed(1) + " °C" : "–"],
+    ["CPU clock", h.arm_clock_mhz != null ? h.arm_clock_mhz + " MHz" : "–"],
+    ["Memory available", `${h.memory_available_mb} of ${h.memory_total_mb} MB`],
+    ["Disk free", `${h.disk_free_gb} of ${h.disk_total_gb} GB`],
+    ["Visits with photos kept", h.captures_visits],
+    ["Power draw, battery, solar", "Not measured (requires instrumentation)"],
+  ]) : kv([["Status", "Not loaded"]]);
+
+  const days = new Map();
+  for (const r of rows) {
+    const k = dayKey(r.wall_clock_unreliable), d = days.get(k) || { n: 0, yes: 0, lat: [] };
+    d.n++; if (r.decision === "YES") d.yes++; if (r.trigger_to_decision_seconds != null) d.lat.push(r.trigger_to_decision_seconds);
+    days.set(k, d);
+  }
+  const dayRows = [...days.entries()].sort((a, b) => b[0].localeCompare(a[0])).slice(0, 60);
+  $("days").innerHTML = `<tr><th>Date</th><th class="num">Visits</th><th class="num">YES</th><th class="num">NO</th><th class="num">YES rate</th><th class="num">Median decision</th></tr>` +
+    dayRows.map(([k, d]) => `<tr><td>${k}</td><td class="num">${d.n}</td><td class="num">${d.yes}</td><td class="num">${d.n - d.yes}</td><td class="num">${pct(d.yes, d.n)}</td><td class="num">${sec(quantile(d.lat, .5))}</td></tr>`).join("");
+
+  $("visits").innerHTML = `<tr><th>Time</th><th>Visit</th><th>Decision</th><th class="num">Best score</th><th>Top label</th><th class="num">Photos</th><th class="num">Decision</th><th>Servo</th><th>Images</th></tr>` +
+    rows.slice(-50).reverse().map((r) => {
+      const b = best(r), servo = r.servo ? `${r.servo.stroke} · ${r.servo.outcome}` : "off";
+      const links = Array.from({ length: r.photos_taken || 0 }, (_, i) => `<a href="#" data-batch="${escapeHtml(r.batch)}" data-file="image-${String(i + 1).padStart(2, "0")}.jpg">${i + 1}</a>`).join(" ");
+      return `<tr><td>${fmtTime(r.wall_clock_unreliable)}</td><td>${escapeHtml(r.boot)}-${r.sequence}</td><td class="${r.decision === "YES" ? "ok" : ""}">${r.decision}</td>` +
+        `<td class="num">${b ? b.cap_score.toFixed(3) : "–"}</td><td>${b ? escapeHtml(b.top_label) : "–"}</td><td class="num">${r.photos_taken}</td>` +
+        `<td class="num">${sec(r.trigger_to_decision_seconds)}</td><td class="${r.servo && r.servo.outcome !== "DONE" ? "bad" : ""}">${escapeHtml(servo)}</td><td>${links}</td></tr>`;
+    }).join("");
+
+  const moves = logs.servo.rows.filter((r) => r.goto);
+  const warned = moves.filter((r) => r.power_warnings > 0);
+  $("power").innerHTML = kv([
+    ["Servo moves recorded", moves.length],
+    ["Moves with undervoltage readings", `${warned.length}${moves.length ? " (" + pct(warned.length, moves.length) + ")" : ""}`, warned.length ? "bad" : ""],
+    ["Last move with undervoltage", warned.length ? new Date(warned[warned.length - 1].time_unreliable * 1000).toLocaleString() : "–"],
+  ]);
+
+  $("status").textContent = lastSync ? `Data as of ${lastSync.toLocaleTimeString()} · ${rows.length} visits${failures ? " · connection problem" : ""}` : "Connecting…";
+}
+
+async function refresh(withHealth) {
+  try {
+    await syncLog("detect"); await syncLog("servo");
+    if (withHealth) health = await (await api("/api/health")).json();
+    lastSync = new Date(); failures = 0;
+  } catch (error) { failures++; $("status").textContent = error.message; }
+  render();
+}
+
+let timer = null, idle = 0;
+function schedule() {
+  clearTimeout(timer);
+  if (document.hidden) return;  // no polling while the page is in the background
+  const before = logs.detect.rows.length;
+  timer = setTimeout(async () => {
+    await refresh(idle % 6 === 0);
+    idle = logs.detect.rows.length === before ? idle + 1 : 0;
+    schedule();
+  }, Math.min(30000, 5000 + idle * 2500));  // 5 s, slowing to 30 s while nothing happens
+}
+document.addEventListener("visibilitychange", () => { if (!document.hidden) { idle = 0; refresh(true).then(schedule); } else clearTimeout(timer); });
+
+$("visits").addEventListener("click", async (event) => {
+  const link = event.target.closest("a[data-batch]"); if (!link) return;
+  event.preventDefault();
+  try {
+    const blob = await (await api(`/api/photo?batch=${encodeURIComponent(link.dataset.batch)}&file=${encodeURIComponent(link.dataset.file)}`)).blob();
+    window.open(URL.createObjectURL(blob), "_blank");
+  } catch (error) { alert("Photo not available: " + error.message); }
+});
+$("loadErrors").addEventListener("click", async () => {
+  try {
+    const e = await (await api("/api/errors")).json();
+    $("errors").innerHTML = `<h2>Detector warnings and errors (last 50)</h2><pre>${escapeHtml(e.service.join("\n") || "None recorded")}</pre>` +
+      `<h2>Kernel undervoltage events</h2><pre>${escapeHtml(e.kernel_undervoltage.join("\n") || "None recorded")}</pre>`;
+  } catch (error) { $("errors").textContent = error.message; }
+});
+
+function download(name, text, type) {
+  const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([text], { type })); a.download = name; a.click();
+}
+$("json").addEventListener("click", () => download("crown-crows-visits.json", JSON.stringify(logs.detect.rows, null, 1), "application/json"));
+$("csv").addEventListener("click", () => {
+  const head = ["time_pi_clock", "boot", "sequence", "decision", "best_cap_score", "top_label", "photos_taken", "trigger_to_decision_s", "accept", "servo_stroke", "servo_outcome", "reward_command", "model_sha256", "batch"];
+  const lines = logs.detect.rows.filter((r) => r.decision).map((r) => { const b = best(r); return [r.wall_clock_unreliable, r.boot, r.sequence, r.decision, b ? b.cap_score : "", b ? b.top_label : "", r.photos_taken, r.trigger_to_decision_seconds, r.accept, r.servo ? r.servo.stroke : "", r.servo ? r.servo.outcome : "", r.reward, r.model_sha256 || "", r.batch]; });
+  download("crown-crows-visits.csv", [head, ...lines].map((row) => row.map((v) => `"${String(v ?? "").replace(/"/g, '""')}"`).join(",")).join("\n"), "text/csv");
+});
+
+refresh(true).then(schedule);
+</script>
+</body>
+</html>

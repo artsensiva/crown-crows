@@ -18,6 +18,8 @@
 - [x] **Repository public** (for viewing), 2026-10-15.
 - [ ] **A recognition model under a business-friendly licence** before any sale: Apple's MobileCLIP2 licence allows only non-commercial research, including the exported model. Candidates: CLIP-type models under MIT or Apache-2.0 (for example OpenAI CLIP, TinyCLIP), measured for speed on the Pi 3; or a small model trained on our own photos with a permissively licensed backbone. Same tests as now (grey-card sessions, self-test).
 
+- [x] **Monitoring dashboard** (2026-10-17): on demand, read-only, computed in the browser ([MONITOR](MONITOR.md)).
+
 ## Open decisions
 
 - [ ] **Set-up step per unit**, run by the installer (no manual photo collection): an empty-tray photo that sets the tray area and records the expected brightness and sharpness; a one-minute YES/NO check with a real cap and another object; periodic comparison with the empty-tray photo, to catch a shifted camera, a dirty tray or a fogged window. The shipped self-test photos stay the same for every unit.

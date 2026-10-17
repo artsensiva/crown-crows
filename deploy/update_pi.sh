@@ -24,7 +24,7 @@ rsync -a --exclude .git --exclude '.venv*' --exclude models --exclude captures -
 echo "== 3/4 Service file and self-test on the Pi (the service pauses for about a minute)"
 # shellcheck disable=SC2029
 $SSH "$TARGET" 'cd ~/crown-crows \
-  && cp deploy/crown-crows-detect.service ~/.config/systemd/user/ && systemctl --user daemon-reload \
+  && cp deploy/crown-crows-detect.service deploy/crown-crows-monitor.socket deploy/crown-crows-monitor.service ~/.config/systemd/user/ && systemctl --user daemon-reload \
   && systemctl --user stop crown-crows-detect \
   && { .venv-detector/bin/python -B selftest.py 2>/dev/null | grep -E "^(RESULT|network)" || echo "self-test did not run"; } \
   ; systemctl --user start crown-crows-detect'

@@ -1,0 +1,12 @@
+# Monitoring dashboard: systemd listens on port 8080 and starts the read-only
+# server only when a browser connects; nothing runs while nobody is looking.
+# See docs/MONITOR.md.
+[Unit]
+Description=Crown Crows monitoring (on demand)
+
+[Socket]
+ListenStream=8080
+Accept=no
+
+[Install]
+WantedBy=sockets.target

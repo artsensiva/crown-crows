@@ -1,0 +1,14 @@
+# Read-only monitoring server, started by crown-crows-monitor.socket; exits
+# after 2 minutes without requests. Lowest priority so recognition and the
+# servo keep theirs.
+[Unit]
+Description=Crown Crows monitoring server (read-only)
+Requires=crown-crows-monitor.socket
+
+[Service]
+Type=simple
+ExecStart=%h/crown-crows/.venv-detector/bin/python -B %h/crown-crows/monitor/server.py
+Nice=19
+IOSchedulingClass=idle
+CPUQuota=20%
+MemoryMax=64M
