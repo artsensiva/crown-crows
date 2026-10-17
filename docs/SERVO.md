@@ -85,7 +85,9 @@ The `dump_reward` position may only be tested with the food mechanism empty unti
 - **Between visits the servo holds the tray at the centre** (`--servo-idle hold`, the default since 2026-10-14). The alternative `--servo-idle release` switches the pulses off at the centre to save the holding current, but only works if the tray stays at the centre without them. On the current setup it drifted away, so each new stroke began with a full-speed jump back to the centre and the Pi reported undervoltage (see [HISTORY](HISTORY.md)). Use `release` only with a mechanism that keeps the tray centred by itself (a spring or a detent).
 - After a power-on the position is unknown, so the first pulses at the centre can make the servo jump once.
 - A stroke that is interrupted (for example by a service restart) still returns to the centre before the program exits.
-- The owner currently powers the servo from the Pi's 5 V pin; the kernel logged undervoltage during strokes on that wiring. For power-bank operation give the servo its own port or regulator with joined grounds and a 470–1000 µF capacitor; see [POWER](POWER.md#power-bank-what-to-look-for).
+- The servo is powered from the Pi's 5 V pin (owner's decision; it stays so), with a 2200 µF electrolytic capacitor across its + and − wires since 2026-10-17. Short undervoltage dips still begin during tilts to the reward side, not during tilts to the dump side; a slower ramp (20 µs steps) did not change that. No stroke has failed ([POWER](POWER.md#measurements-2026-10-17)).
+- Each move in `logs/servo.jsonl` records `power_warnings` (steps with any active power flag), `flags_before` (the flags before the move), `undervoltage_readings` (steps with undervoltage) and `dip_started_during_move` (an undervoltage that began during the move, so leftovers from recognition are not blamed on the servo).
+- `detect.py --servo-step-us` sets the ramp step (default 40 µs, about 0.4 s per stroke).
 
 ## Use by the detector
 

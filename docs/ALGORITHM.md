@@ -16,7 +16,7 @@ At start-up the servo moves to the centre, the light measures the exposure once 
 |---|---|
 | A PIR does not detect cold objects: six objects tossed into the intake gave zero PIR pulses; a hand always triggers it | The PIR only wakes the system; the camera decides what arrived |
 | A photo taken at the trigger can show the object mid-fall | First photo 1 s after the trigger, then more photos: any one of them may decide |
-| The model loads in about 1.5 s and stays in memory; one analysis takes 0.75–1.4 s on the Pi 3, one photo 0.45–0.7 s | Pipelined photos and analysis: a YES in 2.7–5 s, a NO after about 7.5 s |
+| The model loads in about 1.5 s and stays in memory; one analysis takes about 0.95 s on the Pi 3 (3 threads), one photo 0.45–0.7 s | Pipelined photos and analysis: a YES in about 2.6 s (later if the object appears in a later photo), a NO after about 6.5 s |
 | Room light reaching the tray changed scores drastically | The intake must be dark; the box's own light is the only light |
 | The model judges the whole picture, not objects inside it: whole photos with walls and other objects in view scored a clearly visible object at 0.02, a crop of the tray at 0.99 | Analyse only the tray area, fixed per unit ([DEPLOY](DEPLOY.md)) |
 | Seen from above, a round floor inside a round tube looks like a cap: empty trays scored up to 0.99 as "bottle cap" | Square or rectangular, plain grey tray; no round shapes in the analysed area ([MECHANICS](MECHANICS.md)) |
@@ -30,7 +30,7 @@ At start-up the servo moves to the centre, the light measures the exposure once 
 |---|---|
 | Trigger → first photo | 1 s |
 | Photo (fixed exposure, `--immediate`) | 0.45–0.7 s |
-| Analysis of one photo | 0.75–1.4 s |
-| YES on photo 1 / photo 3 | about 2.7 s / 5 s after the trigger |
-| NO (all five photos) | about 7.5 s after the trigger |
+| Analysis of one photo | about 0.95 s (3 threads, in real visits) |
+| YES on photo 1 / photo 3 | about 2.6 s / up to 5 s after the trigger |
+| NO (all five photos) | about 6.5 s after the trigger |
 | Servo stroke out, 0.5 s hold, back | about 1.2 s |

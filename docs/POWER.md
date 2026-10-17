@@ -39,10 +39,23 @@ Apply on the Pi and test each one; some make local access harder.
 | Activity LED off | ≈ 5 mA ([Pi Supply](https://learn.pi-supply.com/make/how-to-save-power-on-your-raspberry-pi)) | `dtparam=act_led_trigger=none` plus the model-specific `act_led_activelow` setting from the Raspberry Pi documentation, in `config.txt`; keep the red power LED, it shows undervoltage |
 | Unused services | small | `sudo systemctl disable --now avahi-daemon` |
 
+## Measurements 2026-10-17
+
+The servo stays on the Pi's 5 V pin (owner's decision); a 2200 µF / 63 V electrolytic capacitor was fitted across its + and − wires. The dashboard sorts every kernel undervoltage report by what the box was doing, and the servo log records whether a dip began during a move ([MONITOR](MONITOR.md#where-the-power-dips-come-from)).
+
+| Setting | Dips while photographing and recognising | Dips beginning during servo moves |
+|---|---|---|
+| 4 recognition threads | every visit (9 of 9) | not separable (the Pi was still low from recognition) |
+| 2 threads | none | every tilt to the reward side (7 of 7) |
+| 2 threads, slower servo ramp | none | every tilt to the reward side; none to the dump side |
+| 3 threads (production) | none | none in 14 moves (unexplained; to be watched) |
+
+Conclusions: four recognition threads together with camera and light drew more than the supply could hold, and the Pi slowed its CPU; three threads avoid that and decide faster. The servo still causes short dips on the reward side; the capacitor did not remove them. **No crash, restart or failed stroke has come from any dip**, so the dashboard shows them as notes. Still to check: the power supply's rating and cable, and whether the tray meets resistance on the reward side.
+
 ## Power bank: what to look for
 
 - **Output 5.1 V and at least 2.4–2.5 A** on the port that feeds the Pi, with a short, thick cable. The Pi 3 has already reported undervoltage with weaker power.
-- **Do not power the servo from the Pi's 5 V pin.** On 2026-10-14 the servo was powered from the Pi again, and the kernel logged undervoltage during strokes. Feed the servo from a **second port of the power bank** or a separate 5–6 V regulator, join the grounds, and add a 470–1000 µF capacitor across the servo supply. This keeps the Pi stable when the servo starts.
+- **For a power-bank build, do not power the servo from the Pi's 5 V pin** (the bench box keeps it there by the owner's decision; see the measurements above). On 2026-10-14 the servo was powered from the Pi again, and the kernel logged undervoltage during strokes. Feed the servo from a **second port of the power bank** or a separate 5–6 V regulator, join the grounds, and add a 470–1000 µF capacitor across the servo supply. This keeps the Pi stable when the servo starts.
 - **Auto-off.** Many power banks switch off below 50–200 mA ([voussoir](https://voussoir.net/writing/auto_off_power_banks); [0110.be](https://0110.be/posts/Powering_low_current_electronics_projects_with_power_banks)). The Pi draws more than that, but prefer a bank with an "always-on" or low-current mode.
 - **Pass-through charging** if a solar panel will charge the bank while it powers the box.
 

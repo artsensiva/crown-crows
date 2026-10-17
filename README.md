@@ -8,7 +8,7 @@ A crow drops an object into a small intake. A camera looks at it, an on-device v
 
 > **Birds first.** An earlier version of this device was built around a kind of litter that, we later realised, could harm the birds carrying it. We had focused on the technology and underestimated the risk to the birds. That was a significant mistake. We withdrew the design and rebuilt the project around objects that are safe for crows: bottle caps and lids are not toxic and too large to swallow.
 
-> **Status (October 2026): bench prototype.** The detection loop, recognition, servo strokes, installer and self-test run on the Pi. Recognition of caps was tested on a first bench session; the grey tray, the final threshold, the mechanical housing, the food dispenser and outdoor trials are the next steps ([ROADMAP](docs/ROADMAP.md)).
+> **Status (October 2026): bench prototype.** The detection loop, recognition, servo strokes, installer and self-test run on the Pi. Recognition of caps and lids was tuned on a grey tray (threshold 0.6) and checked on 126 bench visits; a monitoring dashboard runs on the local network. The mechanical housing, the food dispenser and outdoor trials are the next steps ([ROADMAP](docs/ROADMAP.md)).
 
 ---
 
@@ -79,15 +79,17 @@ Measured **on the Raspberry Pi 3**:
 
 | Metric | Value |
 |---|---|
-| Decision, object visible in the first photo | **≈ 2.7 s** after the trigger |
-| Decision, object appears in the third photo | **≈ 5 s** |
-| Decision NO (all five photos analysed) | **≈ 7.5 s** |
-| Analysis per photo | 0.75–1.4 s (4 CPU cores) |
+| Decision, object visible in the first photo | **≈ 2.6 s** after the trigger |
+| Decision, object appears in the third photo | ≈ 5 s (measured before the 3-core setting; likely a little faster now) |
+| Decision NO (all five photos analysed) | **≈ 6.5 s** |
+| Analysis per photo | ≈ 0.95 s in real visits (3 CPU cores; 4 cores made the supply sag and the Pi slow its CPU) |
 | Model start-up | about 1.5 s, once; the model then stays in memory |
 | Servo stroke | 0.31–0.34 s per 85° movement; with the 0.5 s hold about 1.2 s |
 | Memory | about 170 MB for recognition (of the Pi's 905 MB) |
 | CPU while waiting for a crow | 0.2 % of one core |
 | Network use | none: the self-test blocks every network call |
+
+**Review of all 126 kept visits** (2026-10-17): 113 decisions right; every cap in view accepted; 9 round or dome-shaped non-caps (a night light, a tea-infuser ball, a roll of tape, a cup) accepted as caps. Their scores overlap those of real caps, so no threshold separates them; this is accepted as a known limit ([RECOGNITION](docs/RECOGNITION.md#review-of-all-kept-visits-2026-10-17-known-limit-accepted)).
 
 **Recognition of caps** (bench sessions, 2026-10-15; not a held-out benchmark): in good light drink caps scored a median **0.96**. The bench's round floor looked like a cap even when empty (up to 0.99); on a plain grey card, with descriptions only for things the box must reject, all 14 caps and 6 lids tested scored at least **0.81**, other objects at most **0.11** and the empty tray **0.00**, even in dim light ([RECOGNITION](docs/RECOGNITION.md)).
 
@@ -100,7 +102,7 @@ Measured **on the Raspberry Pi 3**:
 | PIR motion sensor HC-SR501 on GPIO17 | Wakes the system when a crow arrives; both potentiometers at minimum, jumper on H; a short tube narrows the zone ([HARDWARE](docs/HARDWARE.md#pir-settings-owner-2026-10-14)) |
 | RGB LED module on GPIO27/22/23 (white LED strip via MOSFET planned) | The intake is dark, so this is the only light the camera sees |
 | JAMARA 033212 micro servo on GPIO18 (hardware PWM) | Tips the tray: centre 1500 µs, reward side 2500 µs, dump side 605 µs |
-| Power: USB supply today, a power bank for autonomy | The servo should get its own supply or power-bank port ([POWER](docs/POWER.md)) |
+| Power: USB supply today, a power bank for autonomy | The servo runs from the Pi's 5 V pin with a 2200 µF capacitor; short dips occur but have caused no failure. A power-bank build should give the servo its own port ([POWER](docs/POWER.md)) |
 
 The planned housing (food on top, intake and ledge in the middle, waste below), its mechanisms, materials and mounting options are in [MECHANICS](docs/MECHANICS.md).
 
@@ -172,7 +174,7 @@ The author's own unit is installed exactly this way. **Updating** later is one c
 
 ## Operating it
 
-The service starts by itself at boot and needs no network. On the local network, a **monitoring dashboard** shows visits, decisions, photos and device health on a phone or computer; it runs only while someone looks ([MONITOR](docs/MONITOR.md)). Useful commands on the Pi:
+The service starts by itself at boot and needs no network. On the local network, a **monitoring dashboard** shows visits, decisions, photos and device health on a phone or computer, in a friendly 🐦 Crow mode and a detailed 🤓 Nerd mode; it runs only while someone looks, can be protected by a password, and has a ⏻ Power off button for work on the hardware ([MONITOR](docs/MONITOR.md)). Useful commands on the Pi:
 
 ```bash
 systemctl --user status crown-crows-detect                     # is it running?

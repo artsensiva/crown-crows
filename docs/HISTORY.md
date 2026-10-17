@@ -63,3 +63,16 @@ Light leaks sealed, white reflectors added (colours neutral, still dim). With co
 - Analysing the whole tray area at full resolution made a NO take 10 s; the area is now reduced to at most 512 px before recognition (same scores): YES 2.6–2.7 s, NO 6.6–6.9 s on the Pi.
 - A fresh clone failed to build the model (torchvision did not match the pinned torch); with torch and torchvision both from the CPU index and pinned versions, a fresh clone builds a byte-identical model.
 - **Verified by the owner:** `bash deploy/setup_pi.sh <user>@<pi> --fresh` from a fresh GitHub clone rebuilt everything on the Pi and passed the self-test 6/6 with the network blocked.
+
+## 2026-10-16 to 2026-10-17: Monitoring dashboard
+
+A dashboard for a phone or computer, started only while someone looks, computing everything in the browser. It grew with the owner's requests: live readings every 3 s, colour signals, a crowned-crow icon and logo, a friendly 🐦 Crow mode next to a detailed 🤓 Nerd mode, links from every friendly figure to its data, a motion-sensor readiness light, the three last checks with photos and a breakdown per visit, problems as small chips in the header, a burst of flowers, fruit and mushrooms for YES (poo for NO), an optional password for access from outside (not published for now) and a Power off button ([MONITOR](MONITOR.md)).
+
+Lessons: an alarm shown from a minutes-old health snapshot overstated a 4-second dip, so "power low now" is read live; and the wording swung from too rosy ("mostly fine") to too alarming ("can corrupt the memory card") before settling on the evidence: short dips are notes, because none caused a failure.
+
+## 2026-10-17: Capacitor, power diagnosis and recognition threads
+
+- A 2200 µF capacitor was fitted at the servo. Lining up kernel dips with visits showed that with four recognition threads every visit dipped while photographing and recognising, before the servo moved; the servo's per-move counter had been counting flags left over from recognition. The servo log now records whether a dip began during a move.
+- Two threads removed the recognition dips and were faster in real visits (1.27 s instead of about 2 s per photo); a bench check with the detector stopped showed four threads are fastest on their own (0.76 s), so the slowdown came from the sagging supply. Three threads: 0.95 s per photo, YES in 2.6 s, NO in 6.5 s, no recognition dips; now the default.
+- With recognition dips gone, the servo's own dips showed: on tilts to the reward side only. A slower servo ramp did not help and was reverted ([POWER](POWER.md#measurements-2026-10-17)).
+- All 126 kept visits were reviewed by eye: 113 right, 9 round non-caps accepted, 2 caps missed at the edge of the view. No threshold separates the mistakes; the owner accepted this as a known limit rather than add checks ([RECOGNITION](RECOGNITION.md#review-of-all-kept-visits-2026-10-17-known-limit-accepted)).

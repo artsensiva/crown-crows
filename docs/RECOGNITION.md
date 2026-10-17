@@ -16,7 +16,7 @@ Each description is used as "a photo of a …". A photo is YES when its `cap_sco
 - **Weights:** `timm/MobileCLIP2-S0-OpenCLIP`, revision `095906d28bf54d7584dc411e8ffe448f34289e05`, `open_clip_model.safetensors`, SHA-256 `ab91a1a0c4330d6b1913e24d5035dfdea15423316aaec649610c6b1c6ddd0e95`. Licensed under Apple's research licence (`apple-amlr`), which restricts their use; they are not part of this repository.
 - **Export:** `deploy/build_model.sh` downloads the weights and runs `export_model.py`, which writes one ONNX file (`model.onnx`, 46 MB) with the image encoder and the description embeddings built in, plus the description list in its metadata. On the Pi only onnxruntime is needed: the model is ready about 1.5 s after start, instead of about 90 s with PyTorch. The detector refuses a model file whose description list differs from `recognition.py`.
 - **Preprocessing (essential):** the analysed area is padded to a square with white, resized bilinearly to 256 × 256, values 0–1, **no mean/std normalisation**. Loaded from a local file, open_clip silently uses OpenAI CLIP's normalisation instead, which ruins the scores; `export_model.py` and `recognition.py` therefore set the preprocessing explicitly.
-- **Speed on the Pi 3:** 0.75–1.4 s per analysis with 4 threads.
+- **Speed on the Pi 3:** with the detector stopped, 0.76 s per analysis on 4 threads, 0.89 s on 3, 1.22 s on 2, 2.20 s on 1. In real visits (camera and light working at the same time) 4 threads took about 2 s because the supply sagged and the Pi slowed its CPU; production uses 3 threads: about 0.95 s (2026-10-17).
 
 ## Bench session, 2026-10-15
 

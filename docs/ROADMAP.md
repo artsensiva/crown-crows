@@ -4,21 +4,23 @@
 
 - [x] Raspberry Pi 3 running offline: camera, PIR (HC-SR501, settings in [HARDWARE](HARDWARE.md)), RGB light as camera and status light, servo on hardware PWM, calibrated 85° each way.
 - [x] Recognition without training: MobileCLIP2-S0 zero-shot, exported to ONNX (ready in about 1.5 s), preprocessing verified.
-- [x] Production logic: PIR trigger → up to five photos → YES/NO in 2.7–7.5 s → servo stroke; permanent service that starts at boot and after crashes.
+- [x] Production logic: PIR trigger → up to five photos → YES/NO in 2.6–6.5 s → servo stroke; permanent service that starts at boot and after crashes.
+- [x] Grey-card sessions: descriptions, threshold 0.6, self-test photos ([RECOGNITION](RECOGNITION.md)).
+- [x] Bench Pi migrated to this project with the one-command installer; self-test 6/6.
+- [x] Recognition on 3 cores (2026-10-17): faster in real visits than 4, no power dip while recognising ([MONITOR](MONITOR.md#where-the-power-dips-come-from)).
 - [x] One-command installer with self-test, one-command update, persistent system log, storage limits.
 - [x] Bench session with caps and lids (2026-10-15): description set chosen; round tray ruled out ([RECOGNITION](RECOGNITION.md)).
 - [x] Fixed tray area per unit (`config/local.tray.json`) instead of searching for a round floor.
 
 ## Next
 
-- [ ] **Grey-card test on the bench:** a plain grey card as the tray floor, caps and lids, other objects, empty tray. Sets the threshold, decides whether "jar lid" joins the cap descriptions, and provides the self-test photos (`selftest-photos/`, with `tray.json`).
-- [ ] **Migrate the bench Pi** to this project, installed like any other unit; self-test, then a live test with caps ([TESTING](TESTING.md)).
-- [ ] **Separate servo supply** (power bank port or regulator); the Pi reported undervoltage while powering the servo ([POWER](POWER.md)).
+- [ ] **Power headroom** (a note, not a fault: no failure seen so far). The servo stays on the Pi's 5 V pin (owner's decision) with a 2200 µF capacitor; short dips remain on tilts to the reward side. To check when convenient: the power supply's rating and cable, and whether the tray meets resistance on the reward side ([POWER](POWER.md#measurements-2026-10-17)).
+- [ ] **Round non-cap objects** are sometimes accepted (known limit, accepted 2026-10-17). A model trained on the box's own photos would fix it if it ever matters.
 - [x] **Licence:** all rights reserved; permission on request (free for private individuals, commercial licence for public authorities and companies) ([LICENSE](../LICENSE)).
 - [x] **Repository public** (for viewing), 2026-10-15.
 - [ ] **A recognition model under a business-friendly licence** before any sale: Apple's MobileCLIP2 licence allows only non-commercial research, including the exported model. Candidates: CLIP-type models under MIT or Apache-2.0 (for example OpenAI CLIP, TinyCLIP), measured for speed on the Pi 3; or a small model trained on our own photos with a permissively licensed backbone. Same tests as now (grey-card sessions, self-test).
 
-- [x] **Monitoring dashboard** (2026-10-17): on demand, read-only, computed in the browser ([MONITOR](MONITOR.md)).
+- [x] **Monitoring dashboard** (2026-10-17): on demand, computed in the browser; Crow and Nerd modes, last checks with photos, motion-sensor readiness, power-dip diagnosis, optional password, Power off button ([MONITOR](MONITOR.md)).
 
 ## Open decisions
 

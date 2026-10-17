@@ -40,7 +40,7 @@ Never disable host-key checks or dismiss changed-key warnings without investigat
 sudo poweroff
 ```
 
-Wait for the shutdown to finish (30–60 s, until the green activity LED stops), then unplug the Pi and the servo supply. Change cables, CSI and GPIO wiring only with all power removed.
+Or press **⏻ Power off** in the monitoring dashboard ([MONITOR](MONITOR.md#power-off-button)). Wait for the shutdown to finish (30–60 s, until the green activity LED stops), then unplug the Pi and the servo supply. Change cables, CSI and GPIO wiring only with all power removed.
 
 ## Power check
 

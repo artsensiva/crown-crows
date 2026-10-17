@@ -84,7 +84,7 @@ If a precise distance limit is needed later, a different sensor can measure dist
 
 ### Servo
 
-JAMARA 033212 micro servo on hardware PWM (GPIO18), calibrated to 85° each way ([SERVO](SERVO.md)). Powered from the Pi's 5 V pin it caused undervoltage; it needs its own supply ([POWER](POWER.md)).
+JAMARA 033212 micro servo on hardware PWM (GPIO18), calibrated to 85° each way ([SERVO](SERVO.md)). Powered from the Pi's 5 V pin (kept so by the owner), with a 2200 µF capacitor across its supply wires since 2026-10-17; short undervoltage dips remain on tilts to the reward side, without failures so far ([POWER](POWER.md#measurements-2026-10-17)).
 
 Common colors: red for power, brown/black for ground, yellow/orange/white for signal. Verify against the model rather than color alone. Confirm it is positional: continuous-rotation servos interpret pulses as speed, not HOME position.
 
