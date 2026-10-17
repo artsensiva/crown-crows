@@ -5,7 +5,15 @@ when a browser connects; exits after IDLE_SECONDS without requests, so nothing
 runs while nobody is looking. It never writes, never controls hardware and
 only serves an allowlist: the page, the two logs from a byte offset on, single
 photos, live health readings and recent errors from the system log.
+
+Access: the page sends the random token from config/local.monitor.json. For
+access from the internet a password can be set (python monitor/server.py
+--set-password); /api/login exchanges it for the token. Wrong passwords lock
+the login for a growing time (1 min, doubling, at most 1 h), kept in a file so
+the lock survives the server's idle exit.
 """
+import getpass
+import hashlib
 import hmac
 import json
 import os
@@ -25,6 +33,8 @@ LOGS = {"detect": ROOT / "logs/detect.jsonl", "detect.1": ROOT / "logs/detect.js
         "servo": ROOT / "logs/servo.jsonl", "servo.1": ROOT / "logs/servo.jsonl.1"}
 CAPTURES = ROOT / "captures"
 TOKEN_FILE = ROOT / "config/local.monitor.json"
+LOCK_FILE = ROOT / "config/local.monitor-lock.json"
+PBKDF2_ROUNDS = 60_000  # about 0.3 s per attempt on a Pi 3
 IDLE_SECONDS = 120
 MAX_CHUNK = 4_000_000
 BATCH = re.compile(r"^[0-9a-f]{8}-\d{4}-\d+$")
@@ -190,6 +200,8 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
         self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("X-Robots-Tag", "noindex, nofollow")
+        self.send_header("Referrer-Policy", "no-referrer")
         for key, value in (headers or {}).items():
             self.send_header(key, value)
         self.end_headers()
@@ -197,6 +209,33 @@ class Handler(BaseHTTPRequestHandler):
 
     def fail(self, status, message):
         self.send(status, json.dumps({"error": message}).encode())
+
+    def do_POST(self):
+        self.server.last_request = time.monotonic()
+        if urlparse(self.path).path != "/api/login":
+            return self.fail(404, "not found")
+        length = int(self.headers.get("Content-Length") or 0)
+        if not 0 < length <= 1024:
+            return self.fail(400, "bad request")
+        try:
+            password = json.loads(self.rfile.read(length)).get("password", "")
+        except (ValueError, AttributeError):
+            return self.fail(400, "bad request")
+        lock = json.loads(LOCK_FILE.read_text()) if LOCK_FILE.exists() else {"failures": 0, "until": 0}
+        wait = lock["until"] - time.time()
+        if wait > 0:
+            return self.send(429, json.dumps({"error": "too many attempts", "retry_seconds": round(wait)}).encode())
+        stored = self.server.password
+        if stored and isinstance(password, str) and hmac.compare_digest(
+                hashlib.pbkdf2_hmac("sha256", password.encode(), bytes.fromhex(stored["salt"]), stored["rounds"]).hex(),
+                stored["hash"]):
+            LOCK_FILE.unlink(missing_ok=True)
+            return self.send(200, json.dumps({"token": self.server.token}).encode())
+        lock["failures"] += 1
+        if lock["failures"] >= 5:  # five free tries, then 1 min, 2 min, 4 min … up to 1 h
+            lock["until"] = time.time() + min(3600, 60 * 2 ** (lock["failures"] - 5))
+        LOCK_FILE.write_text(json.dumps(lock))
+        return self.fail(401, "wrong password")
 
     def do_GET(self):
         self.server.last_request = time.monotonic()
@@ -248,14 +287,37 @@ class Handler(BaseHTTPRequestHandler):
             return self.fail(500, type(error).__name__)
 
 
+def set_password():
+    # Run on the Pi by the owner; the password is typed there and only its hash is stored.
+    settings = json.loads(TOKEN_FILE.read_text()) if TOKEN_FILE.exists() else {}
+    if not settings.get("token"):
+        sys.exit("No token yet: run deploy/install.sh first.")
+    password = getpass.getpass("New dashboard password (at least 10 characters): ")
+    if len(password) < 10:
+        sys.exit("Too short; nothing changed.")
+    if getpass.getpass("Repeat it: ") != password:
+        sys.exit("The two entries differ; nothing changed.")
+    salt = os.urandom(16)
+    settings["password"] = {"salt": salt.hex(), "rounds": PBKDF2_ROUNDS,
+                            "hash": hashlib.pbkdf2_hmac("sha256", password.encode(), salt, PBKDF2_ROUNDS).hex()}
+    TOKEN_FILE.write_text(json.dumps(settings, indent=2) + "\n")
+    TOKEN_FILE.chmod(0o600)
+    LOCK_FILE.unlink(missing_ok=True)
+    print("Password set. It takes effect the next time the monitoring server starts (within 2 minutes of no use).")
+
+
 def main():
-    token = json.loads(TOKEN_FILE.read_text()).get("token", "") if TOKEN_FILE.exists() else ""
+    if sys.argv[1:] == ["--set-password"]:
+        return set_password()
+    settings = json.loads(TOKEN_FILE.read_text()) if TOKEN_FILE.exists() else {}
+    token = settings.get("token", "")
     if os.environ.get("LISTEN_FDS") == "1" and os.environ.get("LISTEN_PID") == str(os.getpid()):
         server = HTTPServer(("", 0), Handler, bind_and_activate=False)
         server.socket = socket.socket(fileno=3)
     else:  # manual start for testing: python monitor/server.py [port]
         server = HTTPServer(("", int(sys.argv[1]) if len(sys.argv) > 1 else 8080), Handler)
     server.token, server.health_at, server.health_cache = token, 0.0, {}
+    server.password = settings.get("password")
     server.service_at, server.service_info = -1e9, {}
     server.last_request = time.monotonic()
     server.timeout = 5

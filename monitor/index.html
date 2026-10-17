@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
 <title>Crown Crows · Monitoring</title>
 <link rel="icon" id="favicon" href="data:,">
 <style>
@@ -130,6 +131,13 @@
   .sev.urgent { background: var(--bad-bg); color: var(--bad); } .sev.soon { background: var(--warn-bg); color: var(--warn); } .sev.info { background: var(--info-bg); color: var(--info); }
   h2 { font-size: 14px; margin: 24px 0 6px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--soft); }
   .meta { color: var(--soft); font-size: 13px; }
+  .login { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: 16px;
+           background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(6px); }
+  .login[hidden] { display: none; }
+  .login form { width: min(340px, 100%); display: grid; gap: 10px; text-align: center; background: var(--bg); box-shadow: 0 6px 30px rgba(0,0,0,.15); }
+  .login h2 { margin: 0; } .login img { width: 72px; height: 72px; margin: 0 auto; border-radius: 16px; }
+  .login input[type=password] { font-size: 16px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); color: var(--ink); }
+  .login button { font-size: 16px; padding: 10px; border-radius: 10px; }
   .hmeta { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
   .alerts { font-size: 12px; color: var(--soft); text-decoration: none; display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; }
   .alerts span { border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; white-space: nowrap; }
@@ -182,6 +190,17 @@
 </head>
 <body>
 <main>
+<div class="login" id="login" hidden>
+  <form id="loginForm" class="card">
+    <img alt="" src="data:," id="loginLogo">
+    <h2>Crown Crows</h2>
+    <p class="meta">Monitoring of a crow box. Please enter the password.</p>
+    <input type="password" id="password" autocomplete="current-password" aria-label="Password" placeholder="Password" required>
+    <label class="meta"><input type="checkbox" id="remember" checked> Remember on this device</label>
+    <button type="submit">Sign in</button>
+    <p class="meta" id="loginMsg" role="alert"></p>
+  </form>
+</div>
 <header>
   <h1><img id="logo" alt="" src="data:,">Crown Crows · Monitoring</h1>
   <span class="hmeta"><span class="meta"><span class="dot" id="fresh"></span><span id="status">Connecting…</span></span>
@@ -280,17 +299,41 @@
 <script>
 "use strict";
 const $ = (id) => document.getElementById(id);
-const token = (() => {
+let token = (() => {
   const fromHash = new URLSearchParams(location.hash.slice(1)).get("token");
   try { if (fromHash) { localStorage.setItem("cc-token", fromHash); history.replaceState(null, "", location.pathname); } } catch (e) {}
-  try { return fromHash || localStorage.getItem("cc-token") || prompt("Access token") || ""; } catch (e) { return fromHash || ""; }
+  try { return fromHash || localStorage.getItem("cc-token") || ""; } catch (e) { return fromHash || ""; }
 })();
+// Login with the password (access from the internet); the server answers with the access token.
+function showLogin(message) {
+  $("login").hidden = false; $("loginMsg").textContent = message || ""; $("password").focus();
+}
+$("loginForm").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const button = $("loginForm").querySelector("button"); button.disabled = true; $("loginMsg").textContent = "Checking…";
+  try {
+    const response = await fetch("/api/login", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password: $("password").value }), cache: "no-store" });
+    const answer = await response.json().catch(() => ({}));
+    if (response.ok && answer.token) {
+      token = answer.token; $("password").value = "";
+      try { if ($("remember").checked) localStorage.setItem("cc-token", token); } catch (e) {}
+      location.reload();
+    } else if (response.status === 429) $("loginMsg").textContent = `Too many attempts. Try again in ${Math.ceil(answer.retry_seconds / 60)} min.`;
+    else $("loginMsg").textContent = response.status === 401 ? "Wrong password." : "The box did not answer. Try again.";
+  } catch (error) { $("loginMsg").textContent = "The box did not answer. Try again."; }
+  button.disabled = false;
+});
 const logs = { detect: { offset: 0, inode: null, rows: [] }, servo: { offset: 0, inode: null, rows: [] } };
 let health = null, lastSync = null, failures = 0;
 
 async function api(path) {
   const response = await fetch(path, { headers: { "X-Token": token }, cache: "no-store" });
-  if (response.status === 401) throw new Error("Access token rejected");
+  if (response.status === 401) {
+    try { localStorage.removeItem("cc-token"); } catch (e) {}
+    showLogin("Please sign in.");
+    throw new Error("Not signed in");
+  }
   if (!response.ok) throw new Error("HTTP " + response.status);
   return response;
 }
@@ -992,10 +1035,10 @@ setInterval(() => {  // local clock only: shows how old the live data is; no req
   $("liveText").textContent = `LIVE · updated ${Math.round(age)} s ago · every 3 s`;
 }, 1000);
 setIcon(null);
-$("logo").src = capIcon(null);  // the same crowned crow as the tab icon, without the status dot
+$("logo").src = $("loginLogo").src = capIcon(null);  // the same crowned crow as the tab icon, without the status dot
 renderNow();
-refresh(true).then(schedule);
-pollNow();
+if (token) { refresh(true).then(schedule); pollNow(); }
+else showLogin();
 </script>
 </body>
 </html>

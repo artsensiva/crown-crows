@@ -63,3 +63,18 @@ The status bar is computed in the browser from data the page already has; nothin
 | Power draw, battery, solar | Not measured: needs instrumentation |
 
 History lasts as long as the logs and photos are kept: photos for the last 1000 visits; each log up to two 20 MB generations (at about 0.7 KB per visit, tens of thousands of visits); the system log up to 50 MB.
+
+## Access from the internet (password, Tailscale Funnel)
+
+Free, no domain and no router changes: [Tailscale Funnel](https://tailscale.com/kb/1223/funnel) gives the Pi a fixed HTTPS address such as `https://crown-crows.<tailnet>.ts.net` and forwards it to the dashboard. Anyone with the address and the password can open it.
+
+1. **Password** (on the Pi; typed there, only a salted PBKDF2 hash is stored in `config/local.monitor.json`):
+   `~/crown-crows/.venv-detector/bin/python ~/crown-crows/monitor/server.py --set-password`
+   At least 10 characters. Takes effect when the monitoring server next starts (after 2 minutes without use).
+2. **Tailscale** (on the Pi, needs sudo):
+   `curl -fsSL https://tailscale.com/install.sh | sh`, then `sudo tailscale up --hostname crown-crows` and open the login link it prints.
+3. **Funnel**: `sudo tailscale funnel --bg 8080`. The first time it prints a link to allow HTTPS and Funnel for this device in the Tailscale admin console; then run the command again. It prints the public address. `sudo tailscale funnel reset` switches it off.
+
+**Sign-in:** the page shows a password form; the server answers a correct password with the access token, which the browser keeps if *Remember on this device* is ticked. The LAN link with `#token=…` keeps working. Five wrong passwords lock the login for 1 minute, doubling with every further wrong one up to 1 hour (kept in `config/local.monitor-lock.json`; deleting it lifts the lock). A stranger guessing can therefore also lock out real users for a while; that is accepted for a small project. To shut everyone out at once, set a new password and delete the token line from `config/local.monitor.json`, then run `deploy/install.sh` again for a new token.
+
+**Privacy and load:** the page and API carry `noindex` so search engines do not list them. Everyone with the password can see the photos; the camera looks at the tray, but a hand may appear in a photo. Tailscale itself uses about 30–40 MB of memory; the dashboard server still only runs while someone has the page open.
