@@ -82,12 +82,12 @@
     100% { transform: none; }
   }
   @media (prefers-reduced-motion: reduce) { h1 img { animation: none; } }
-  body:not(.nerd) #tech { display: none; } body.nerd #fun { display: none; }
+  body:not(.nerd) #tech { display: none; } body.nerd #fun, body.nerd #funTop { display: none; }
   #tech section, #tech > .scroll, #tech > table.kv { border: 1px solid var(--line); border-radius: 14px; padding: 4px 14px 10px; margin-top: 8px; }
   #tech h2 { margin-top: 22px; text-transform: none; letter-spacing: 0; font-size: 16px; color: var(--ink); }
   #tech section h2 { margin-top: 10px; }
   #tech .grid { gap: 12px; }
-  #fun { margin-top: 14px; }
+  #fun, #funTop { margin-top: 14px; }
   .card { border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; margin: 12px 0; }
   .mood { display: flex; gap: 16px; align-items: center; }
   .mood.ok { background: color-mix(in srgb, var(--ok-bg) 72%, transparent); } .mood.warn { background: color-mix(in srgb, var(--warn-bg) 72%, transparent); }
@@ -226,6 +226,12 @@
 <div class="arm wait" id="arm" role="status" aria-live="polite"><span class="led"></span><span><b id="armTitle">Motion sensor…</b><small id="armSub">connecting</small></span><i id="armBar"></i></div>
 </div>
 
+<section id="funTop">
+  <div class="bubbles" id="bubbles"></div>
+  <div class="tiles" id="tiles"></div>
+  <div class="card guest" id="guest"></div>
+</section>
+
 <section class="checks" aria-label="Last checks">
   <div class="checks-head"><b>🔍 Last checks</b> <small style="color:var(--soft)">the 3 latest visits · thumbnail = best photo · numbers = all photos</small><a href="#visits" class="more-link" data-goto="visits">all visits →</a></div>
   <div class="check-row" id="checks"><div class="check empty">Waiting for the first check…</div></div>
@@ -233,9 +239,6 @@
 
 <section id="fun">
   <div class="card mood warn" id="mood"><div class="big">🐦</div><div><div class="title">Connecting to the crow office…</div><div class="sub">one sec</div></div></div>
-  <div class="bubbles" id="bubbles"></div>
-  <div class="tiles" id="tiles"></div>
-  <div class="card guest" id="guest"></div>
   <div id="funIssues"></div>
   <p class="note">* "Snacks served" counts reward commands sent to the servo; whether food actually came out is not measured. Want the real numbers? Switch to 🤓 Nerd mode at the top.</p>
 </section>
@@ -713,6 +716,10 @@ function goTo(id, push = true) {
   });
   $("back").classList.add("show");
 }
+$("funTop").addEventListener("click", (event) => {
+  const link = event.target.closest("a[data-goto]"); if (!link) return;
+  event.preventDefault(); goTo(link.dataset.goto);
+});
 $("fun").addEventListener("click", (event) => {
   const link = event.target.closest("a[data-goto]"); if (!link) return;
   event.preventDefault(); goTo(link.dataset.goto);
