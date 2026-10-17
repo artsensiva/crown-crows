@@ -2,10 +2,11 @@
 # loaded. Starts at boot without a login (requires `loginctl enable-linger
 # <user>`) and restarts after crashes. YES = reward stroke, NO = dump-only
 # stroke. The tray area comes from config/local.tray.json (docs/DEPLOY.md).
-# Recognition runs on 2 cores: alone, 4 cores are fastest (0.76 s per photo),
+# Recognition runs on 3 cores: alone, 4 cores are fastest (0.76 s per photo),
 # but in real visits, together with camera and light, the supply sagged and
-# the Pi capped its CPU (about 2 s); 2 cores took 1.27 s without a dip
-# (measured 2026-10-17; docs/MONITOR.md).
+# the Pi capped its CPU (about 2 s per photo). In visits 2 cores took 1.27 s
+# and 3 cores 0.95 s, both without a dip while recognising (measured
+# 2026-10-17; docs/MONITOR.md).
 # Install: see docs/DEPLOY.md.
 [Unit]
 Description=Crown Crows detector (PIR, light, camera, offline recognition, servo strokes)
@@ -20,7 +21,7 @@ ExecStart=%h/crown-crows/.venv-detector/bin/python -B %h/crown-crows/detect.py \
   --model-sha256 1ac057e79ad7c3a4ad2fe99e2555b7e0ef63cc11e6992c45e4fb235eaa2224f8 \
   --accept 0.6 --servo full --servo-idle hold --dump-seconds 0.5 --ignore-seconds 25 \
   --cycles 0 --run-seconds 0 --warmup 60 --keep-batches 1000 \
-  --threads 2 --log %h/crown-crows/logs/detect.jsonl
+  --threads 3 --log %h/crown-crows/logs/detect.jsonl
 # detect.py switches the light off on SIGTERM before exiting.
 KillSignal=SIGTERM
 TimeoutStopSec=30
