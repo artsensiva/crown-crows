@@ -28,6 +28,7 @@
 - [ ] **Set-up step per unit**, run by the installer (no manual photo collection): an empty-tray photo that sets the tray area and records the expected brightness and sharpness; a one-minute YES/NO check with a real cap and another object; periodic comparison with the empty-tray photo, to catch a shifted camera, a dirty tray or a fogged window. The shipped self-test photos stay the same for every unit.
 - [ ] **Dark photos.** Nearly black photos are still judged instead of being rejected as bad images and taken again with a new exposure.
 - [ ] **The owner's "growing area" tactic.** Each of the five photos is analysed on a slightly larger part of the tray than the one before. One area per photo, so the time per photo stays the same; an object at the edge is found on a later photo, and the widest areas give the model more distractions. Test offline on saved visit photos first (caps found, time to YES, false YES).
+- [ ] **Physical prototype box** (owner, from 2026-10-17): one servo, powered from the Pi, camera and light placed by the owner, PIR zone limited. After assembly: camera focus, servo calibration, new tray area, self-test, then 20–30 test visits to re-check the threshold (0.85) on the new tray and light ([DEPLOY](DEPLOY.md), step 6). Settings of the bench mock-up are backed up on the setup computer.
 - [ ] **From [MECHANICS](MECHANICS.md):** one or two servos, ledge height, food type, and whether the dish needs a shutter.
 
 ## Version 2: a device that trains crows step by step (to do, owner 2026-10-15; to be studied later)
