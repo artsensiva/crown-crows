@@ -203,7 +203,7 @@
   <h1><img id="logo" alt="" src="data:,">Crown Crows · Monitoring</h1>
   <span class="hmeta"><span class="meta"><span class="dot" id="fresh"></span><span id="status">Connecting…</span></span>
     <a href="#mood" class="alerts" id="alerts" hidden title="Open the details"></a></span>
-  <span><button id="csv">Export CSV</button> <button id="json">Export JSON</button> <button id="poweroff" class="danger" title="Shut the Pi down, e.g. for work on the hardware">⏻ Power off</button></span>
+  <span><button id="csv">Export CSV</button> <button id="json">Export JSON</button> <button id="poweroff" class="danger" hidden title="Shut the Pi down, e.g. for work on the hardware (home network only)">⏻ Power off</button></span>
 </header>
 <div class="controls">
 <div class="switch" role="group" aria-label="View">
@@ -956,6 +956,7 @@ async function pollNow() {
     nowFailed = false;
   } catch (error) { current = null; nowFailed = true; }
   safely(renderNow); safely(assess); safely(renderFun); safely(renderArm);
+  $("poweroff").hidden = !(current && current.power_off_allowed);  // only offered on the home network
   nowTimer = setTimeout(pollNow, 3000);  // always re-armed, even if a display part failed
 }
 

@@ -19,6 +19,7 @@ polkit rule from deploy/50-crown-crows-poweroff.rules.
 import getpass
 import hashlib
 import hmac
+import ipaddress
 import json
 import os
 import re
@@ -202,6 +203,18 @@ def can_power_off():
 class Handler(BaseHTTPRequestHandler):
     server_version = "crown-crows-monitor"
 
+    def from_home(self):
+        # Power off only from the local network. Requests through Tailscale Funnel reach the
+        # server from 127.0.0.1 (tailscaled's proxy) and carry Tailscale-Funnel-Request, so a
+        # private, non-loopback address without that header means a device at home.
+        try:
+            address = ipaddress.ip_address(self.client_address[0])
+        except ValueError:
+            return False
+        if isinstance(address, ipaddress.IPv6Address) and address.ipv4_mapped:
+            address = address.ipv4_mapped
+        return address.is_private and not address.is_loopback and "Tailscale-Funnel-Request" not in self.headers
+
     def log_message(self, *args):
         pass
 
@@ -239,6 +252,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self.fail(401, "token required")
             if body.get("confirm") != "poweroff":
                 return self.fail(400, "confirmation missing")
+            if not self.from_home():
+                return self.fail(403, "power off works only from the home network")
             if can_power_off() != "yes":
                 return self.fail(403, "not allowed: install the polkit rule (deploy/install.sh)")
             # Answer first, then power off: the detector is stopped cleanly by systemd.
@@ -302,7 +317,7 @@ class Handler(BaseHTTPRequestHandler):
                     self.server.health_cache, self.server.health_at = health(), now
                 return self.send(200, json.dumps(self.server.health_cache).encode())
             if url.path == "/api/now":
-                return self.send(200, json.dumps(now_reading(self.server)).encode())
+                return self.send(200, json.dumps(dict(now_reading(self.server), power_off_allowed=self.from_home())).encode())
             if url.path == "/api/errors":
                 return self.send(200, json.dumps(errors()).encode())
             return self.fail(404, "not found")

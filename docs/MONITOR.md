@@ -84,6 +84,8 @@ Free, no domain and no router changes: [Tailscale Funnel](https://tailscale.com/
 
 **⏻ Power off** in the header (both modes) shuts the Pi down cleanly, for example before work on the wiring. It asks for confirmation (and warns if a visit is in progress), then shows what to do: wait until the green light stops blinking (about 20 s), then unplug. The page notices when the Pi stops answering. It cannot switch the Pi on again: plug the power back in, and the detector and the dashboard start by themselves.
 
+**Home network only:** the button is shown, and `POST /api/poweroff` accepted, only for a request from a private, non-loopback address without the `Tailscale-Funnel-Request` header. Requests through Tailscale Funnel arrive from 127.0.0.1 and carry that header, so from the internet the button is hidden and the call refused (403).
+
 This is the dashboard's only action besides reading. `POST /api/poweroff` needs the access token and the word `poweroff`, and works only with the polkit rule `deploy/50-crown-crows-poweroff.rules`, which lets this one user power off without a password and allows nothing else. `deploy/install.sh` installs it (one sudo prompt); without it the button reports "not allowed".
 
 ## Where the power dips come from
