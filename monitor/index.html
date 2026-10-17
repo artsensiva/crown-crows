@@ -68,6 +68,17 @@
   .fix { margin: 6px 0 0; } .fun-issue .line { font-size: 16px; font-weight: 600; }
   .fun-issue details { margin-top: 8px; } .fun-issue summary { cursor: pointer; color: var(--soft); }
   .star { color: var(--soft); font-size: 12px; }
+  a.go { color: inherit; text-decoration: none; display: block; }
+  a.go:hover, a.go:focus-visible { outline: 2px solid var(--info); outline-offset: 2px; }
+  a.bubble.go { display: inline-block; }
+  .more { color: var(--info); font-size: 12px; margin-top: 4px; }
+  a.more-link { color: var(--info); font-size: 13px; text-decoration: none; white-space: nowrap; }
+  a.more-link:hover { text-decoration: underline; }
+  .spot { animation: spot 2.2s ease-out; border-radius: 8px; }
+  @keyframes spot { 0%, 40% { box-shadow: 0 0 0 4px var(--info); } 100% { box-shadow: 0 0 0 4px transparent; } }
+  #back { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); z-index: 5; display: none; font-size: 15px; font-weight: 600;
+          background: var(--ink); color: var(--bg); border-radius: 999px; padding: 10px 18px; box-shadow: 0 2px 10px rgba(0,0,0,.2); }
+  body.nerd #back.show { display: block; }
   .mood { flex-wrap: wrap; } .mood .head { display: flex; gap: 16px; align-items: center; width: 100%; }
   .working { margin: 10px 0 2px; font-size: 15px; width: 100%; }
   .mood-issues { width: 100%; margin-top: 6px; }
@@ -204,6 +215,7 @@
 <p><button id="loadErrors">🔍 Load errors from the system log</button></p>
 <div id="errors"></div>
 </div>
+<button id="back">🐦 Back to Crow mode</button>
 </main>
 
 <script>
@@ -428,6 +440,8 @@ const FUN = {
 };
 const SEVERITY = { no_connection: "urgent", detector_down: "urgent", undervoltage_now: "urgent", servo_failure: "urgent",
   servo_undervoltage: "soon", hot: "soon", disk: "soon", memory: "soon", undervoltage_boot: "info", clock: "info" };
+const ISSUE_TARGET = { servo_undervoltage: "power", undervoltage_boot: "power", undervoltage_now: "health", clock: "health",
+  hot: "now", disk: "now", memory: "now", servo_failure: "visits", detector_down: "health", no_connection: "now" };
 const SEVERITY_TEXT = { urgent: "🚨 urgent", soon: "🛠️ fix soon", info: "ℹ️ just so you know" };
 let openIssues = new Set(), lastIssuesHtml = "", lastFunIssuesHtml = "", lastLevel = "warn", lastIssues = [];
 let dipTimes = null, dipsFetchedAt = 0;  // kernel undervoltage events, read with the error log at most every 10 min
@@ -544,7 +558,7 @@ function renderFun() {
   const items = [...lastIssues].sort((a, b) => order[SEVERITY[a[0]]] - order[SEVERITY[b[0]]]).map(([id, lvl, evidence]) => {
     const [e, line, fix] = FUN[id], sev = SEVERITY[id];
     return `<div class="mi"><div class="top"><span>${e} ${line}</span><span class="sev ${sev}">${SEVERITY_TEXT[sev]}</span></div>` +
-      `<div class="facts">📈 ${escapeHtml(facts(id, evidence))}</div><div class="todo">🔧 ${escapeHtml(fix)}</div>` +
+      `<div class="facts">📈 ${escapeHtml(facts(id, evidence))} <a href="#${ISSUE_TARGET[id] || "issues"}" class="more-link" data-goto="${ISSUE_TARGET[id] || "issues"}">🔎 the data →</a></div><div class="todo">🔧 ${escapeHtml(fix)}</div>` +
       `<details data-id="fun-${id}"${openIssues.has("fun-" + id) ? " open" : ""}><summary>🤓 Nerd details</summary>${nerdDetails(id, evidence)}</details></div>`;
   }).join("");
   const moodHtml = `<div class="head"><div class="big">${emoji}</div><div><div class="title">${title}</div><div class="sub">${escapeHtml(sub)}</div></div></div>` +
@@ -565,13 +579,13 @@ function renderFun() {
     if (n.light === "white") bubbles.push(["💡 Lights, camera…", true]);
     if (n.cpu_temp_c != null) bubbles.push([`🌡️ ${n.cpu_temp_c.toFixed(0)} °C · ${n.cpu_temp_c < 60 ? "cool 😎" : n.cpu_temp_c < 70 ? "warm 🙂" : "hot 🥵"}`, false]);
   } else bubbles.push(["📡 Connecting…", false]);
-  $("bubbles").innerHTML = bubbles.map(([text, hi]) => `<span class="bubble${hi ? " hi" : ""}">${text}</span>`).join("");
+  $("bubbles").innerHTML = bubbles.map(([text, hi]) => `<a href="#now" class="bubble go${hi ? " hi" : ""}" data-goto="now" title="Details in Nerd mode">${text}</a>`).join("");
 
   const fast = quantile(t.latency.length ? t.latency : all.latency, .5);
   $("tiles").innerHTML = [
-    ["👑", t.yes, "caps today"], ["🙅", t.no, "not caps today"], ["🥜", t.rewards, "snacks served today*"],
-    ["⚡", fast != null ? fast.toFixed(1) + " s" : "–", "typical decision"], ["🏆", all.yes, "caps all time"],
-  ].map(([e, v, l]) => `<div class="tile"><div class="num">${e} ${v}</div><div class="lbl">${l}</div></div>`).join("");
+    ["👑", t.yes, "caps today", "days", "per day"], ["🙅", t.no, "not caps today", "visits", "see visits"], ["🥜", t.rewards, "snacks served today*", "summary", "summary"],
+    ["⚡", fast != null ? fast.toFixed(1) + " s" : "–", "typical decision", "summary", "timings"], ["🏆", all.yes, "caps all time", "days", "per day"],
+  ].map(([e, v, l, target, more]) => `<a href="#${target}" class="tile go" data-goto="${target}"><div class="num">${e} ${v}</div><div class="lbl">${l}</div><div class="more">🔎 ${more} →</div></a>`).join("");
 
   const last = rows[rows.length - 1];
   let guest = `<div class="big">🪺</div><div>No guests yet. Waiting for the first crow…</div>`;
@@ -581,7 +595,8 @@ function renderFun() {
     guest = `<div class="big">${yes ? "👑" : "🙅"}</div><div><div><b>Last guest:</b> ${when}</div>` +
       `<div>${yes ? "It's a cap! 🎉 Snack served." : `Not a cap${b ? " (looked like: " + escapeHtml(b.top_label) + ")" : ""}. No snack 🤷`}` +
       `${b ? ` <span class="star">capness ${b.cap_score.toFixed(2)}</span>` : ""}</div></div>` +
-      (last.photos_taken ? `<button data-batch="${escapeHtml(last.batch)}" data-file="image-01.jpg" id="peek">📷 Peek at the photo</button>` : "");
+      (last.photos_taken ? `<button data-batch="${escapeHtml(last.batch)}" data-file="image-01.jpg" id="peek">📷 Peek at the photo</button>` : "") +
+      ` <a href="#visits" class="more-link" data-goto="visits">🔎 all visits →</a>`;
   }
   if (guest !== lastGuestHtml) { $("guest").innerHTML = guest; lastGuestHtml = guest; }
 }
@@ -598,8 +613,25 @@ function setMode(nerd) {
   $("nerdBtn").setAttribute("aria-pressed", String(nerd));
   try { localStorage.setItem("cc-mode", nerd ? "nerd" : "crow"); } catch (e) {}
 }
-$("crowBtn").addEventListener("click", () => setMode(false));
+$("crowBtn").addEventListener("click", () => { setMode(false); $("back").classList.remove("show"); });
 $("nerdBtn").addEventListener("click", () => setMode(true));
+
+// Crow-mode indicators link to their detailed data in Nerd mode.
+function goTo(id) {
+  setMode(true);
+  const target = $(id); if (!target) return;
+  if (id === "power") { const load = $("loadErrors"); if (load && !$("errors").innerHTML) load.click(); }  // show the raw dip log too
+  requestAnimationFrame(() => {
+    target.scrollIntoView({ behavior: "smooth", block: "center" });
+    target.classList.remove("spot"); void target.offsetWidth; target.classList.add("spot");
+  });
+  $("back").classList.add("show");
+}
+$("fun").addEventListener("click", (event) => {
+  const link = event.target.closest("a[data-goto]"); if (!link) return;
+  event.preventDefault(); goTo(link.dataset.goto);
+});
+$("back").addEventListener("click", () => { setMode(false); $("back").classList.remove("show"); window.scrollTo({ top: 0, behavior: "smooth" }); });
 
 // The bear's silent Hamlet (Shakespeare, public domain), one line every 5 s while the page is visible.
 const LINES = [["To be, or not to be…", "Act III, scene 1"], ["Alas, poor Yorick!", "Act V, scene 1"],
