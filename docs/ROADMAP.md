@@ -15,6 +15,7 @@
 ## Next
 
 - [ ] **Power headroom** (a note, not a fault: no failure seen so far). The servo stays on the Pi's 5 V pin (owner's decision), without a capacitor (tested, no clear benefit, removed); short dips remain on some tilts. To check when convenient: the power supply's rating and cable, and whether the tray meets resistance on the reward side ([POWER](POWER.md#measurements-2026-10-17)).
+- [ ] **Energy for battery operation:** measure with a USB power meter first, then night shutdown, Wi-Fi/Tailscale off in the field, HDMI/Bluetooth off, possibly a Pi Zero 2 W ([POWER](POWER.md#measured-idle-load-2026-10-17)). Not needed while the box runs from the mains.
 - [ ] **Round non-cap objects** are sometimes accepted (known limit, accepted 2026-10-17). A model trained on the box's own photos would fix it if it ever matters.
 - [x] **Licence:** all rights reserved; permission on request (free for private individuals, commercial licence for public authorities and companies) ([LICENSE](../LICENSE)).
 - [x] **Repository public** (for viewing), 2026-10-15.

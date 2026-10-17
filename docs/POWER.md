@@ -7,13 +7,37 @@ Goal: Crown Crows runs for days on a power bank (later with solar charging), wit
 | Consumer | When | Power |
 |---|---|---|
 | Raspberry Pi 3 Model B, idle | always | ≈ 1.3–1.4 W (≈ 260 mA at 5 V) *(est.)* ([linuxhint](https://linuxhint.com/raspberry_pi_3_power_requirements/); [pidramble](https://pidramble.com/node/27)) |
-| Recognition (4 CPU cores) | ≈ 1–6 s per visit | + ≈ 1–2 W *(est.)* |
+| Recognition (3 CPU cores) | ≈ 1–5 s per visit | + ≈ 1–2 W *(est.)* |
+| Tailscale (only if access from the internet is set up) | always | small CPU use (measured below), but it keeps the Wi-Fi radio active *(cost to be measured)* |
 | Camera module | ≈ 0.6 s per photo, up to 5 photos per visit | + ≈ 0.25 W *(est.)* |
 | Servo stroke | ≈ 1.2 s per visit | peaks up to 0.6–0.75 A (manufacturer maximum) |
 | Servo holding the tray at the centre | always | small holding current *(est.: a few to a few tens of mA with a light tray)*; to be measured |
 | RGB light: camera light / start-up signals | ≈ 5 s per visit / only while starting | a few mA; negligible on average |
 
 Daily energy is dominated by the idle Pi: about 1.4 W × 24 h ≈ 34 Wh *(est.)*. Even 100 visits a day add only about 0.5 Wh. **Reducing the idle consumption is what matters.**
+
+## Measured idle load, 2026-10-17
+
+One minute while waiting for a crow, CPU time read from `/proc` on the Pi (no visit, dashboard closed):
+
+| | CPU |
+|---|---|
+| Whole Pi | **0.5 % of the four cores**: the processor sleeps almost all the time |
+| Tailscale (`tailscaled`) | 0.73 % of one core, now the largest single consumer |
+| Detector waiting for a crow | 0.3 % of one core |
+| Monitoring server | runs only while a dashboard page is open (each open page reads the Pi every 3 s) |
+
+**Assessment.** The software is no longer where energy goes: the idle hardware is. About 1.3–1.4 W around the clock *(est.)* is about 34 Wh a day; even 100 visits a day add about 0.5 Wh (under 2 %). The servo's holding current is unknown and must be measured; releasing it is not an option on this unit (the tray drifts off centre). On the bench, running from the mains, energy does not matter; it matters only once the box runs on a battery. No figure in watts has been measured yet.
+
+**Order of work for battery operation:**
+
+1. **Measure:** a USB power meter (about 10–15 €) between supply and Pi; replace every *(est.)* figure here ([How to measure](#how-to-measure)). Without it every further choice is a guess.
+2. **Night shutdown:** about 40 % less energy; needs a timer or a small microcontroller to switch the Pi on in the morning ([Bigger savings](#bigger-savings-research-options)).
+3. **Wi-Fi and Tailscale off in the field:** saves the radio, but the dashboard is then not reachable from the internet. A choice between convenience and battery life.
+4. **HDMI, Bluetooth and unused services off:** together about 10–15 % *(est.)*, one-time settings ([Measures that need root](#measures-that-need-root-recommended-for-field-use-not-yet-applied)).
+5. **Raspberry Pi Zero 2 W:** roughly half the idle consumption *(est.)*, same software.
+
+For reference: a 20 000 mAh power bank lasts about 1.5–1.7 days *(est.)*; weeks without recharging need night shutdown and a solar panel.
 
 ## Measures already in place (software)
 

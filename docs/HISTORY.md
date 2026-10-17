@@ -80,3 +80,9 @@ Lessons: an alarm shown from a minutes-old health snapshot overstated a 4-second
 ## 2026-10-17: Capacitor removed
 
 The owner removed the 2200 µF capacitor at the servo. Over 8 visits without it (3 recognition threads), a dip began during 3 of 16 servo moves, all tilts to the dump side, with no dip while recognising and no failure. With it, the counts had ranged from none to every tilt to the reward side between tests, so it showed no clear benefit ([POWER](POWER.md#measurements-2026-10-17)).
+
+## 2026-10-17: Recognition accepted; energy assessed
+
+28 more visits reviewed by eye (threshold 0.85): all 6 real caps accepted at 0.99–1.00; 15 of 20 other objects rejected; the 5 accepted ones were again round objects seen end-on (a nail-polish bottle standing upright, a round toothpick container, the night light), scored 0.97–1.00, beyond any threshold. The owner is satisfied with how real caps are handled.
+
+Idle load measured on the Pi: 0.5 % of the four cores in total; Tailscale is now the largest single consumer (0.73 % of one core). Energy is dominated by the idle hardware, not the software; the plan for battery operation starts with a USB power meter ([POWER](POWER.md#measured-idle-load-2026-10-17)).
