@@ -140,7 +140,7 @@ def open_servo(options):
     from servo_bench import Servo
 
     try:
-        servo = Servo(options.pwm_root, options.servo_calibration, options.servo_log)
+        servo = Servo(options.pwm_root, options.servo_calibration, options.servo_log, step_us=options.servo_step_us)
         servo.start()
     except Exception as error:
         # A missing calibration or PWM set-up (e.g. on a newly installed Pi)
@@ -373,6 +373,8 @@ def parse_options():
                         help="off: no strokes; dump: dump-only stroke after every visit; full: reward stroke for YES")
     parser.add_argument("--servo-calibration", type=Path, default=home / "config/local.servo.json")
     parser.add_argument("--servo-log", type=Path, default=home / "logs/servo.jsonl")
+    parser.add_argument("--servo-step-us", type=int, default=40,
+                        help="Servo ramp step; smaller steps move more slowly and draw lower current peaks")
     parser.add_argument("--pwm-root", type=Path, default=Path("/sys/class/pwm/pwmchip0"))
     parser.add_argument("--status-led", choices=("on", "off"), default="on",
                         help="Status on the RGB light: blue while starting, three green flashes when ready, then dark; red for problems")
@@ -391,8 +393,9 @@ def parse_options():
         value = getattr(options, name)
         if not math.isfinite(value) or value < 0:
             parser.error(f"{name} must be finite and nonnegative")
-    if options.cycles < 0 or options.keep_batches < 1 or not 1 <= options.threads <= 4 or options.remeter_ms < 100:
-        parser.error("keep-batches must be positive, cycles nonnegative, threads 1-4, remeter-ms at least 100")
+    if options.cycles < 0 or options.keep_batches < 1 or not 1 <= options.threads <= 4 or options.remeter_ms < 100 \
+            or not 5 <= options.servo_step_us <= 50:
+        parser.error("keep-batches must be positive, cycles nonnegative, threads 1-4, remeter-ms at least 100, servo-step-us 5-50")
     if options.camera_timeout <= 0:
         parser.error("camera-timeout must be positive")
     if options.tray is None:
