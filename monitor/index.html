@@ -32,6 +32,10 @@
   .check .label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .check .meta { color: var(--soft); font-size: 12px; }
   .check .bar { width: 100%; margin: 3px 0; }
+  .check > .meta:first-child { margin-bottom: 4px; }
+  .check .shots { margin-top: 5px; display: flex; flex-wrap: wrap; gap: 4px; align-items: center; color: var(--soft); font-size: 12px; }
+  .check .shots button { min-width: 26px; padding: 2px 6px; border: 1px solid var(--line); border-radius: 6px; background: transparent; color: var(--info); font-size: 12px; cursor: pointer; }
+  .check .shots button.on { border-color: var(--info); font-weight: 700; }
   .check.fresh { animation: fresh 2.5s ease-out; }
   @keyframes fresh { 0%, 30% { box-shadow: 0 0 0 4px var(--info); } 100% { box-shadow: 0 0 0 4px transparent; } }
   .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
@@ -211,7 +215,7 @@
 </div>
 
 <section class="checks" aria-label="Last checks">
-  <div class="checks-head"><b>🔍 Last checks</b><a href="#visits" class="more-link" data-goto="visits">all visits →</a></div>
+  <div class="checks-head"><b>🔍 Last checks</b> <small style="color:var(--soft)">one card per object · thumbnail = best photo · numbers = all photos</small><a href="#visits" class="more-link" data-goto="visits">all visits →</a></div>
   <div class="check-row" id="checks"><div class="check empty">Waiting for the first check…</div></div>
 </section>
 
@@ -784,11 +788,15 @@ function renderChecks() {
     const when = r.wall_clock_unreliable ? ago((Date.now() - new Date(r.wall_clock_unreliable)) / 1000) : "";
     const picture = thumb ? `<button class="thumb" style="background-image:url('${thumb}')" data-batch="${escapeHtml(r.batch)}" data-file="${file}" title="Open the full photo" aria-label="Open the full photo"></button>`
       : `<div class="thumb" style="display:grid;place-items:center;cursor:default">${thumb === null ? "📷 photo not kept" : "📷 loading…"}</div>`;
-    return `<div class="check ${yes ? "yes" : "no"}${fresh && i === 0 ? " fresh" : ""}">${picture}` +
+    return `<div class="check ${yes ? "yes" : "no"}${fresh && i === 0 ? " fresh" : ""}"><div class="meta">Visit ${r.sequence ?? ""} · ${r.photos_taken || 0} photo${r.photos_taken === 1 ? "" : "s"}</div>${picture}` +
       `<div class="verdict"><span>${yes ? "👑 YES" : "🙅 NO"}${r.reward ? " 🥜" : ""}${failed ? " ⚠️" : ""}</span><span title="${escapeHtml(fmtTime(r.wall_clock_unreliable))}">${when}</span></div>` +
       `<div class="label" title="Best guess of the model">${escapeHtml(top ? top.top_label : "–")}</div>` +
       (score != null ? bar(score, r.accept, yes) : "") +
-      `<div class="meta">cap ${score != null ? score.toFixed(2) : "–"} · ${r.photos_taken || 0} photo${r.photos_taken === 1 ? "" : "s"} · ${r.trigger_to_decision_seconds != null ? r.trigger_to_decision_seconds.toFixed(1) + " s" : "–"}</div></div>`;
+      `<div class="meta">cap ${score != null ? score.toFixed(2) : "–"} · decided in ${r.trigger_to_decision_seconds != null ? r.trigger_to_decision_seconds.toFixed(1) + " s" : "–"}</div>` +
+      `<div class="shots">📷 ${Array.from({ length: r.photos_taken || 0 }, (_, k) => {
+        const n = k + 1, f = `image-${String(n).padStart(2, "0")}.jpg`, s = (r.photos || []).find((x) => x.photo === n);
+        return `<button class="${f === file ? "on" : ""}" data-batch="${escapeHtml(r.batch)}" data-file="${f}" title="${s ? `photo ${n}: ${escapeHtml(s.top_label)}, cap ${s.cap_score.toFixed(2)}` : `photo ${n}: not analysed (decision already made)`}">${n}${s ? "" : "·"}</button>`;
+      }).join("") || "none"}</div></div>`;
   }).join("");
 }
 document.querySelector(".checks").addEventListener("click", async (event) => {
