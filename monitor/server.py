@@ -131,16 +131,24 @@ def now_reading(server):
         from datetime import datetime
         trigger = datetime.fromisoformat(visit["wall_clock_unreliable"]).timestamp() - visit["trigger_to_decision_seconds"]
     ignore_left = max(0.0, trigger + 25 - time.time()) if trigger else 0.0
+    # Trigger readiness, as the detector sees it: it re-arms only after its ignore window
+    # and after the PIR has gone LOW once, so a PIR still HIGH means "not yet".
+    ready_in = None
     if info.get("ActiveState") != "active":
-        state = f"detector {info.get('ActiveState', 'unknown')}"
+        state, phase = f"detector {info.get('ActiveState', 'unknown')}", "off"
     elif running_for is not None and running_for < 75:
-        state = f"starting: model, exposure, PIR warm-up (ready in about {75 - running_for:.0f} s)"
+        ready_in = 75 - running_for
+        state, phase = f"starting: model, exposure, PIR warm-up (ready in about {ready_in:.0f} s)", "starting"
     elif reading["light"] == "white":
-        state = "visit in progress: taking photos"
+        state, phase = "visit in progress: taking photos", "visit"
     elif ignore_left > 0:
-        state = f"visit done; new triggers ignored for {ignore_left:.0f} s"
+        ready_in = ignore_left
+        state, phase = f"visit done; new triggers ignored for {ignore_left:.0f} s", "pause"
+    elif reading["motion"]:
+        state, phase = "ready once the motion sensor goes quiet", "settling"
     else:
-        state = "ready: waiting for a crow"
+        state, phase = "ready: waiting for a crow", "ready"
+    reading["trigger"] = {"phase": phase, "ready_in_seconds": None if ready_in is None else round(ready_in, 1)}
     # System figures from files only (no external programs): well under 1 ms.
     def read_number(path, scale):
         try:

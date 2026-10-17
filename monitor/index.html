@@ -19,6 +19,18 @@
     background-size: 100% 100%; filter: blur(40px); animation: shimmer 38s ease-in-out infinite alternate; }
   @media (prefers-color-scheme: dark) { body::before { opacity: .09; } }
   @keyframes shimmer { from { transform: translate(-8%, -6%) rotate(0deg) scale(1.1); } to { transform: translate(8%, 6%) rotate(25deg) scale(1.25); } }
+  .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+  .arm { position: relative; overflow: hidden; display: inline-flex; align-items: center; gap: 10px; margin: 12px 0 4px; padding: 7px 16px 7px 12px;
+         border: 2px solid var(--line); border-radius: 999px; background: var(--card-bg, transparent); min-width: 250px; }
+  .arm b { display: block; font-size: 15px; } .arm small { display: block; font-size: 12px; color: var(--soft); }
+  .arm .led { width: 14px; height: 14px; border-radius: 50%; flex: none; background: var(--soft); }
+  .arm.ready { border-color: var(--ok); } .arm.ready .led { background: var(--ok); animation: armed 1.6s ease-in-out infinite; }
+  .arm.wait { border-color: var(--warn); } .arm.wait .led { background: var(--warn); }
+  .arm.busy { border-color: var(--info); } .arm.busy .led { background: var(--info); animation: armed .5s ease-in-out infinite; }
+  .arm.off { border-color: var(--bad); } .arm.off .led { background: var(--bad); }
+  .arm i { position: absolute; left: 0; bottom: 0; height: 3px; background: var(--warn); width: 0; transition: width 1s linear; }
+  @keyframes armed { 50% { opacity: .35; transform: scale(.8); } }
+  @media (prefers-reduced-motion: reduce) { .arm .led { animation: none !important; } }
   .switch { display: inline-flex; border: 2px solid var(--ink); border-radius: 999px; overflow: hidden; margin: 12px 0 4px; }
   .switch button { border: 0; border-radius: 0; padding: 8px 20px; font-size: 16px; font-weight: 600; min-height: 42px; background: transparent; color: var(--ink); }
   .switch button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
@@ -176,8 +188,11 @@
   </div>
   <span><button id="csv">Export CSV</button> <button id="json">Export JSON</button></span>
 </header>
+<div class="controls">
 <div class="switch" role="group" aria-label="View">
   <button id="crowBtn" aria-pressed="true">🐦 Crow mode</button><button id="nerdBtn" aria-pressed="false">🤓 Nerd mode</button>
+</div>
+<div class="arm wait" id="arm" role="status" aria-live="polite"><span class="led"></span><span><b id="armTitle">Motion sensor…</b><small id="armSub">connecting</small></span><i id="armBar"></i></div>
 </div>
 
 <section id="fun">
@@ -695,19 +710,42 @@ function renderNow() {
   }).join("");
   previousNow = Object.fromEntries(nowRows.map(([k, v]) => [k, v]));
 }
+// Is the motion sensor armed? Shown in both modes; counts down between the 3-second readings.
+const ARM = {
+  ready: ["ready", "🟢 Ready for a crow", () => "the next motion starts a visit"],
+  settling: ["wait", "🟡 Almost ready", () => "waits for the motion sensor to see no movement once"],
+  pause: ["wait", "⏳ Short pause", (s) => s ? `ready again in ${s} s (no double visits)` : "ready again any second"],
+  starting: ["wait", "🔥 Warming up", (s) => `model, camera and sensor; ready in about ${s} s`],
+  visit: ["busy", "📸 Busy: a visit is on", () => "taking photos and deciding"],
+  off: ["off", "🔴 Not armed", () => "the detector is not running"],
+};
+let armAt = 0, armPause = 0;
+function renderArm() {
+  const trig = current && current.trigger;
+  if (!current || !trig) { $("arm").className = "arm off"; $("armTitle").textContent = "⚪ Sensor state unknown"; $("armSub").textContent = "no data from the Pi"; $("armBar").style.width = "0"; return; }
+  const [cls, title, sub] = ARM[trig.phase] || ARM.off;
+  const left = trig.ready_in_seconds == null ? null : Math.max(0, Math.ceil(trig.ready_in_seconds - (Date.now() - armAt) / 1000));
+  $("arm").className = "arm " + cls; $("armTitle").textContent = title; $("armSub").textContent = sub(left);
+  $("arm").title = "Detector: " + current.state;
+  $("armBar").style.width = left != null && armPause ? `${100 * (1 - left / armPause)}%` : "0";
+}
+setInterval(() => { if (!document.hidden) safely(renderArm); }, 1000);
+
 async function pollNow() {
   clearTimeout(nowTimer);
   if (document.hidden) return;  // nothing is read while the page is in the background
   try {
     current = await (await api("/api/now")).json();
-    nowReceived = Date.now();
+    nowReceived = armAt = Date.now();
+    const trig = current.trigger;
+    armPause = trig && trig.ready_in_seconds != null ? (trig.phase === "pause" ? 25 : trig.phase === "starting" ? 75 : 0) : 0;
     const beat = $("beat"); beat.classList.remove("on"); void beat.offsetWidth; beat.classList.add("on");
     const key = current.last_visit ? `${current.last_visit.boot}-${current.last_visit.sequence}` : null;
     if (lastSeen !== null && key !== lastSeen) { idle = 0; await refresh(false); }  // a new visit: fetch its record now
     lastSeen = key;
     nowFailed = false;
   } catch (error) { current = null; nowFailed = true; }
-  safely(renderNow); safely(assess); safely(renderFun);
+  safely(renderNow); safely(assess); safely(renderFun); safely(renderArm);
   nowTimer = setTimeout(pollNow, 3000);  // always re-armed, even if a display part failed
 }
 
