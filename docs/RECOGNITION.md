@@ -64,3 +64,9 @@ Both grey-card sessions together (14 caps, 6 lids, 10 other objects, the empty c
 | Large container lid (about 8 cm) | 0.01–0.05 | 0.01–0.05 (too large for the slot anyway) |
 
 Owner's decisions: coin, button and washer removed from the descriptions; threshold **0.6**. The sample is still small; the live test with the finished box will show more. Brighter light remains planned ([LIGHTING](LIGHTING.md)).
+
+## Review of all kept visits, 2026-10-17 (known limit, accepted)
+
+All 126 visits then kept on the Pi were checked by eye. 113 decisions were right: 84 caps and lids accepted (all that were in view), 29 other items rejected. 9 non-caps were accepted, all round or dome-shaped seen from above: a plug-in night light (twice, 0.92 and 0.95), a metal tea-infuser ball (three times, 0.73–0.82), a roll of tape (0.98), a small red plastic cup (0.94), a capacitor standing on its end (0.92) and a cork disc (0.64). Two caps were missed because they lay almost outside the camera view. A coin was accepted, as allowed (coins need not be rejected).
+
+The scores of these items (0.64–0.98) overlap those of real caps (lowest 0.63, 0.63, 0.75, 0.78), so no threshold separates them. The owner decided not to add further checks or training for this: the zero-shot model accepts some round non-cap objects, and that is acceptable for now. A model trained on the box's own photos remains the option if it ever matters ([ROADMAP](ROADMAP.md)).
