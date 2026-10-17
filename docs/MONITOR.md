@@ -2,9 +2,16 @@
 
 A web page for a phone or computer on the same network as the Pi: what the box is doing right now, whether the motion sensor is armed, the last checks with photos, summary, live device readings, visits per day, recent visits with their photos, where power dips come from, errors from the system log, CSV/JSON export, an optional password and a Power off button.
 
+<p>
+<img src="images/dashboard-crow.jpg" alt="Crow mode on a computer" width="68%">
+<img src="images/dashboard-phone.jpg" alt="Crow mode on a phone" width="27%">
+</p>
+
+*Crow mode on a computer and on a phone.*
+
 ## Open it
 
-`deploy/install.sh` prints the address at the end, for example `http://<pi-address>:8080/#token=<token>`. Open it once; the browser remembers the token. The token is in `config/local.monitor.json` on the Pi (created once by the installer; delete the file and re-run the installer to get a new one).
+`deploy/install.sh` prints the address at the end, for example `http://<pi-address>:8080/#token=<token>`. Open it once; the browser remembers the token. From the internet (optional): the Tailscale Funnel address with the password, see "Access from the internet" below. The token is in `config/local.monitor.json` on the Pi (created once by the installer; delete the file and re-run the installer to get a new one).
 
 ## How it works
 
@@ -15,6 +22,10 @@ A web page for a phone or computer on the same network as the Pi: what the box i
 - **Access:** with the token link, or with a password if one is set (see "Access from the internet"; it works the same on the local network). The connection on the local network is plain HTTP, so use it on a trusted network (WPA2 Wi-Fi) and do not reuse an important password.
 
 ## Two modes
+
+![Nerd mode: the same data in detail, with the status bar, power notes and the live readings every 3 s](images/dashboard-nerd.jpg)
+
+*Nerd mode: problems and notes with full explanations, and the "Now" table, updated every 3 s.*
 
 - **🐦 Crow mode** (default): a friendly view. From the top: bubbles for what is happening right now (waiting for a crow, crow visit, snack break, tray position, temperature), today's tiles (caps, not caps, snacks served, typical decision time, caps all time) and the last guest with a photo button; then 🔍 Last checks; then the mood card. The mood card answers first **"Is the box working?"**, then lists each point with an urgency tag (🚨 urgent, 🛠️ fix soon, ℹ️ just so you know), the numbers behind it (for power dips: how many since the Pi started and what the box was doing at each, from the kernel log read at most every 10 minutes) and a one-line fix. A big mood emoji (😎 all works, possibly with notes; 😬 things to look at; 😱 a problem), and each point in one plain sentence with a one-line fix and **🤓 Nerd details** to open the full explanation.
 - **Visit celebration:** when a new decision arrives while the page is open (within 3 minutes of the visit), the background bursts: 🌸🍓🍄 flowers, fruit and mushrooms for YES, 💩 for NO. Visits loaded with the page or caught up after the tab was hidden do not burst. Click the big mood emoji to preview it. Switched off when the system asks for reduced motion.

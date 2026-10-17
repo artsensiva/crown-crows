@@ -8,7 +8,11 @@ A crow drops an object into a small intake. A camera looks at it, an on-device v
 
 > **Birds first.** An earlier version of this device was built around a kind of litter that, we later realised, could harm the birds carrying it. We had focused on the technology and underestimated the risk to the birds. That was a significant mistake. We withdrew the design and rebuilt the project around objects that are safe for crows: bottle caps and lids are not toxic and too large to swallow.
 
-> **Status (October 2026): bench prototype.** The detection loop, recognition, servo strokes, installer and self-test run on the Pi. Recognition of caps and lids was tuned on a grey tray (threshold 0.6) and checked on 126 bench visits; a monitoring dashboard runs on the local network. The mechanical housing, the food dispenser and outdoor trials are the next steps ([ROADMAP](docs/ROADMAP.md)).
+> **Status (October 2026): bench prototype.** The detection loop, recognition, servo strokes, installer and self-test run on the Pi. Recognition of caps and lids was tuned on a grey tray (threshold 0.6) and checked on 141 bench visits; a monitoring dashboard runs on the local network and, optionally, from the internet. The mechanical housing, the food dispenser and outdoor trials are the next steps ([ROADMAP](docs/ROADMAP.md)).
+
+![The monitoring dashboard in Crow mode: what the box is doing, today's caps and snacks, the last guest, the three latest checks with photos, the recognition threshold and the box's health](docs/images/dashboard-crow.jpg)
+
+*The monitoring dashboard on the bench box ([MONITOR](docs/MONITOR.md)): live state, today's figures, the last three checks with their photos, the recognition threshold, and the box's health in plain words.*
 
 ---
 
@@ -136,6 +140,10 @@ A deliberate constraint was **no custom training**: the system had to work with 
 2. **Edge deployment.** The image encoder and the precomputed description embeddings are exported into one ONNX graph, so the Pi needs neither PyTorch nor the text model: start-up drops from about **90 s to 1.5 s**, memory from **717 MB to about 170 MB**, with identical scores.
 3. **Fixed tray area.** The model rates the whole picture, so only the tray floor is shown to it, set once per unit.
 
+![What the camera sees on the grey tray: a steel crown cap and a plastic cap are accepted, a piece of paper is rejected](docs/images/camera-view.jpg)
+
+*What the model is shown: the tray area of three self-test photos that ship with the repository (`selftest-photos/`).*
+
 ## Engineering challenges solved
 
 | Problem | Finding | Solution |
@@ -174,7 +182,13 @@ The author's own unit is installed exactly this way. **Updating** later is one c
 
 ## Operating it
 
-The service starts by itself at boot and needs no network. On the local network, a **monitoring dashboard** shows visits, decisions, photos and device health on a phone or computer, in a friendly 🐦 Crow mode and a detailed 🤓 Nerd mode; it runs only while someone looks, can be protected by a password, and has a ⏻ Power off button for work on the hardware ([MONITOR](docs/MONITOR.md)). Useful commands on the Pi:
+The service starts by itself at boot and needs no network. On the local network, a **monitoring dashboard** shows visits, decisions, photos and device health on a phone or computer, in a friendly 🐦 Crow mode and a detailed 🤓 Nerd mode; it runs only while someone looks, can be protected by a password, and has a ⏻ Power off button for work on the hardware ([MONITOR](docs/MONITOR.md)).
+
+![The last three checks with the full breakdown of each visit, and the threshold slider with a preview on the logged visits](docs/images/dashboard-checks.jpg)
+
+*Each check opens into a breakdown: why the decision was made, every photo's score and timing, the servo stroke and whether the power dipped. Below, the threshold slider (home network only) shows how the logged visits would have turned out.*
+
+Useful commands on the Pi:
 
 ```bash
 systemctl --user status crown-crows-detect                     # is it running?
