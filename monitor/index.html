@@ -33,6 +33,11 @@
   .check .meta { color: var(--soft); font-size: 12px; }
   .check .bar { width: 100%; margin: 3px 0; }
   .check > .meta:first-child { margin-bottom: 4px; }
+  .check .more-info { margin-top: 6px; font-size: 12px; line-height: 1.45; }
+  .check .more-info summary { cursor: pointer; color: var(--info); }
+  .check .more-info table { width: 100%; border-collapse: collapse; margin: 3px 0; font-size: 11.5px; }
+  .check .more-info th, .check .more-info td { padding: 1px 3px; text-align: left; border-bottom: 1px solid var(--line); }
+  .check .more-info td.num { text-align: right; } .check .more-info td.ok { color: var(--ok); font-weight: 700; } .check .more-info .soft { color: var(--soft); }
   .check .shots { margin-top: 5px; display: flex; flex-wrap: wrap; gap: 4px; align-items: center; color: var(--soft); font-size: 12px; }
   .check .shots button { min-width: 26px; padding: 2px 6px; border: 1px solid var(--line); border-radius: 6px; background: transparent; color: var(--info); font-size: 12px; cursor: pointer; }
   .check .shots button.on { border-color: var(--info); font-weight: 700; }
@@ -663,6 +668,7 @@ function setMode(nerd) {
   $("crowBtn").setAttribute("aria-pressed", String(!nerd));
   $("nerdBtn").setAttribute("aria-pressed", String(nerd));
   try { localStorage.setItem("cc-mode", nerd ? "nerd" : "crow"); } catch (e) {}
+  if (typeof renderChecks === "function") safely(renderChecks);
 }
 $("crowBtn").addEventListener("click", () => { setMode(false); $("back").classList.remove("show"); });
 $("nerdBtn").addEventListener("click", () => setMode(true));
@@ -773,10 +779,37 @@ async function loadThumb(batch, file, tray) {
   } catch (error) { thumbs.set(key, null); }
   lastChecksKey = ""; safely(renderChecks);
 }
+// "More" is open by default in Nerd mode and closed in Crow mode; the reader's own choices are kept.
+const openChecks = new Set(), closedChecks = new Set();
+function checkDetails(r, previous) {
+  const at = Date.parse(r.wall_clock_unreliable) / 1000;
+  const moves = logs.servo.rows.filter((m) => m.goto && m.source === "detect" && m.time_unreliable >= at - 1 && m.time_unreliable <= at + 8);
+  const dips = moves.reduce((sum, m) => sum + (m.power_warnings || 0), 0);
+  const scored = (r.photos || []).filter((x) => x.cap_score != null), top = best(r);
+  const why = r.decision === "YES" && top
+    ? `photo ${top.photo} scored ${top.cap_score.toFixed(2)} ≥ ${r.accept} → YES at once`
+    : `no photo reached ${r.accept}${top ? ` (best ${top.cap_score.toFixed(2)}, ${escapeHtml(top.top_label)})` : ""} → NO`;
+  const gap = previous && previous.wall_clock_unreliable ? (at - Date.parse(previous.wall_clock_unreliable) / 1000) : null;
+  const shots = Array.from({ length: r.photos_taken || 0 }, (_, k) => {
+    const s = (r.photos || []).find((x) => x.photo === k + 1);
+    return `<tr><td>${k + 1}</td>` + (s
+      ? `<td>+${s.seconds_after_trigger != null ? s.seconds_after_trigger.toFixed(1) : "–"} s</td><td>${escapeHtml(s.top_label)}</td><td class="num ${s.cap_score >= r.accept ? "ok" : ""}">${s.cap_score.toFixed(2)}</td><td class="num">${s.analysis_seconds != null ? s.analysis_seconds.toFixed(1) : "–"} s</td>`
+      : `<td colspan="4" class="soft">not analysed: decided already</td>`) + `</tr>`;
+  }).join("");
+  const stroke = r.servo ? { dump_reward: "reward side", dump_only: "dump side" }[r.servo.stroke] || r.servo.stroke : null;
+  return `<details class="more-info" data-batch="${escapeHtml(r.batch)}"${(document.body.classList.contains("nerd") ? !closedChecks.has(r.batch) : openChecks.has(r.batch)) ? " open" : ""}><summary>🔎 more about this visit</summary>` +
+    `<div>🕐 ${escapeHtml(fmtTime(r.wall_clock_unreliable))}${gap != null ? ` · ${ago(gap).replace(" ago", "")} after the visit before` : ""}</div>` +
+    `<div>⚖️ ${why}</div>` +
+    `<div>⏱️ decided ${r.trigger_to_decision_seconds != null ? r.trigger_to_decision_seconds.toFixed(1) + " s" : "–"} after the motion · ${scored.length} of ${r.photos_taken || 0} photos analysed</div>` +
+    (shots ? `<table><tr><th>#</th><th>taken</th><th>model saw</th><th>cap</th><th>took</th></tr>${shots}</table>` : "") +
+    `<div>🦾 ${stroke ? `${stroke} · ${r.servo.outcome === "DONE" ? "✅ done" : "⚠️ " + escapeHtml(r.servo.outcome)}` : "servo off"}` +
+    (moves.length ? ` · ${dips ? `⚡ ${dips} low-power readings during the stroke` : "🔋 no power dip during the stroke"}` : "") + `</div>` +
+    `<div>${r.reward ? "🥜 reward released" : "🚫 no reward"}</div></details>`;
+}
 function renderChecks() {
-  const rows = logs.detect.rows.filter((r) => r.decision).slice(-3).reverse();
+  const all = logs.detect.rows.filter((r) => r.decision), rows = all.slice(-3).reverse();
   if (!rows.length) return;
-  const key = rows.map((r) => `${r.batch}:${thumbs.get(r.batch) || ""}`).join() + [...thumbs.values()].filter((v) => v).length + Math.floor(Date.now() / 30000);
+  const key = rows.map((r) => r.batch).join() + [...thumbs.values()].filter((v) => v).length + Math.floor(Date.now() / 30000) + logs.servo.rows.length + document.body.classList.contains("nerd");
   if (key === lastChecksKey) return; lastChecksKey = key;
   const fresh = newestCheck !== null && rows[0].batch !== newestCheck; newestCheck = rows[0].batch;
   $("checks").innerHTML = rows.map((r, i) => {
@@ -796,9 +829,14 @@ function renderChecks() {
       `<div class="shots">📷 ${Array.from({ length: r.photos_taken || 0 }, (_, k) => {
         const n = k + 1, f = `image-${String(n).padStart(2, "0")}.jpg`, s = (r.photos || []).find((x) => x.photo === n);
         return `<button class="${f === file ? "on" : ""}" data-batch="${escapeHtml(r.batch)}" data-file="${f}" title="${s ? `photo ${n}: ${escapeHtml(s.top_label)}, cap ${s.cap_score.toFixed(2)}` : `photo ${n}: not analysed (decision already made)`}">${n}${s ? "" : "·"}</button>`;
-      }).join("") || "none"}</div></div>`;
+      }).join("") || "none"}</div>${checkDetails(r, all[all.length - 2 - i])}</div>`;
   }).join("");
 }
+document.querySelector(".checks").addEventListener("toggle", (event) => {
+  const box = event.target.closest("details[data-batch]"); if (!box) return;
+  const b = box.dataset.batch; openChecks.delete(b); closedChecks.delete(b);
+  if (box.open !== document.body.classList.contains("nerd")) (box.open ? openChecks : closedChecks).add(b);
+}, true);
 document.querySelector(".checks").addEventListener("click", async (event) => {
   const link = event.target.closest("a[data-goto]");
   if (link) { event.preventDefault(); return goTo(link.dataset.goto); }
