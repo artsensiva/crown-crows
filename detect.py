@@ -47,6 +47,29 @@ SHUTTER_MIN_US, SHUTTER_MAX_US, GAIN_MAX = 100, 60000, 8.0
 LUMA_TARGET, LUMA_LOW, LUMA_HIGH = 90, 45, 140   # median grey level of the tray (0-255); no change inside LOW..HIGH
 
 
+# Files in RAM through which the dashboard's server asks for a live photo (it never touches the camera
+# or the lights itself; monitor/server.py uses the same names).
+SNAPSHOT_REQUEST = Path("/dev/shm/crown-crows-snapshot-request")
+SNAPSHOT_IMAGE = Path("/dev/shm/crown-crows-snapshot.jpg")
+SNAPSHOT_INFO = Path("/dev/shm/crown-crows-snapshot.json")
+
+
+def is_paused(path, cache):
+    # True while config/local.pause.json (written by the dashboard) says paused. One stat() per call;
+    # the file is read again only when it changed.
+    try:
+        stamp = path.stat().st_mtime_ns
+    except OSError:
+        cache[:] = [None, False]
+        return False
+    if cache[0] != stamp:
+        try:
+            cache[:] = [stamp, bool(json.loads(path.read_text()).get("paused"))]
+        except (OSError, ValueError, AttributeError):
+            cache[:] = [stamp, False]
+    return cache[1]
+
+
 def tray_brightness(frame, tray, cv2, numpy):
     # Median grey level and share of fully white pixels of the tray area, on every 8th pixel.
     height, width = frame.shape[:2]
@@ -355,6 +378,40 @@ def monitor(sensor, lights, recognise, cv2, journal, options, stop, servo=None):
         camera["exposure"], camera["args"] = meter(options, timeout_ms or options.remeter_ms)
         LOG.info("Exposure metered: %s", camera["exposure"])
 
+    def snapshot():
+        # A live photo on request: light on for about a second, one photo with the current exposure (which
+        # also corrects it), a small copy with the tray area outlined, and the numbers worth seeing when
+        # aiming, focusing or checking the light: grey level, white share, sharpness.
+        import numpy
+        SNAPSHOT_REQUEST.unlink(missing_ok=True)
+        info = {"taken_at": time.time()}
+        try:
+            lights.on()
+            try:
+                frame, _path, *used = capture(0)
+            finally:
+                lights.off()
+            height, width = frame.shape[:2]
+            left, top, right, bottom = options.tray
+            grey = cv2.cvtColor(frame[int(top * height):int(bottom * height), int(left * width):int(right * width)], cv2.COLOR_BGR2GRAY)
+            median, white = tray_brightness(frame, options.tray, cv2, numpy)
+            info.update({"luma": round(median), "white": round(white, 3),
+                         "sharpness": round(float(cv2.Laplacian(grey, cv2.CV_32F).var()), 1),
+                         "shutter_us": (used[0] or {}).get("shutter_us") if used else camera["exposure"]["shutter_us"],
+                         "gain": (used[0] or {}).get("gain") if used else camera["exposure"]["gain"]})
+            small = cv2.resize(frame, (820, 616), interpolation=cv2.INTER_AREA)
+            cv2.rectangle(small, (int(left * 820), int(top * 616)), (int(right * 820), int(bottom * 616)), (0, 255, 0), 2)
+            temporary = SNAPSHOT_IMAGE.with_suffix(".tmp.jpg")
+            cv2.imwrite(str(temporary), small, [cv2.IMWRITE_JPEG_QUALITY, 80])
+            temporary.replace(SNAPSHOT_IMAGE)
+        except Exception as error:
+            LOG.warning("Live photo failed: %s", error)
+            info["error"] = str(error)
+        temporary = SNAPSHOT_INFO.with_suffix(".tmp")
+        temporary.write_text(json.dumps(info))
+        temporary.replace(SNAPSHOT_INFO)
+        LOG.info("Live photo taken (requested from the dashboard)")
+
     def classify(frame):
         # The fixed tray area (--tray), set once per unit: the camera and the
         # tray are mounted rigidly, so no searching is needed.
@@ -389,9 +446,24 @@ def monitor(sensor, lights, recognise, cv2, journal, options, stop, servo=None):
         events = 0
         armed = False
         ready_at = 0.0
+        paused, pause_cache = False, [None, False]
+        normal_mode = "degraded" if options.servo != "off" and servo is None else "off"
         LOG.info("Ready: waiting for PIR LOW, then a fresh motion event")
         while not stop.is_set() and time.monotonic() < deadline:
             now = time.monotonic()
+            if SNAPSHOT_REQUEST.exists():
+                snapshot()
+            # Pause (dashboard): motion is ignored, so a hand at the tray does not start a visit; the servo
+            # keeps holding the tray. Costs one stat() per loop.
+            if is_paused(options.pause_file, pause_cache) != paused:
+                paused = not paused
+                LOG.info("%s", "Paused from the dashboard: motion is ignored" if paused else "Resumed: waiting for a fresh motion event")
+                if hasattr(lights, "set_mode"):
+                    lights.set_mode("paused" if paused else normal_mode)
+            if paused:
+                armed = False
+                stop.wait(options.poll_seconds)
+                continue
             active = sensor.is_active
             if now >= ready_at:
                 if not active:
@@ -420,6 +492,8 @@ def parse_options():
     parser.add_argument("--model-sha256", required=True)
     parser.add_argument("--tray", nargs=4, type=float, metavar=("X0", "Y0", "X1", "Y1"),
                         help="Fixed tray area as fractions of the photo; default: this unit's --tray-file")
+    parser.add_argument("--pause-file", type=Path, default=home / "config/local.pause.json",
+                        help="While it says {\"paused\": true} (set from the dashboard), motion is ignored")
     parser.add_argument("--accept-file", type=Path, default=home / "config/local.accept.json",
                         help="Threshold set from the dashboard; overrides --accept while present")
     parser.add_argument("--tray-file", type=Path, default=home / "config/local.tray.json",

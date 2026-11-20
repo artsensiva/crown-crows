@@ -21,6 +21,11 @@
   @media (prefers-color-scheme: dark) { body::before { opacity: .09; } }
   @keyframes shimmer { from { transform: translate(-8%, -6%) rotate(0deg) scale(1.1); } to { transform: translate(8%, 6%) rotate(25deg) scale(1.25); } }
   .checks { margin: 10px 0 4px; }
+  .ctl-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 10px 0; }
+  .food-line { font-weight: 600; } #foodBar { width: 160px; height: 10px; } #foodBar i { display: block; height: 100%; background: var(--ok); border-radius: 2px; }
+  #foodBar[hidden] { display: none; }
+  #foodBar.low i { background: var(--warn); } #foodBar.empty i { background: var(--bad); }
+  #snapBox img { max-width: 100%; border-radius: 10px; border: 1px solid var(--line); display: block; margin-bottom: 4px; }
   .strict-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
   .strict-row { display: flex; align-items: center; gap: 10px; margin: 8px 0 4px; }
   .strict-row input { flex: 1; min-width: 120px; } .strict-row output { font-weight: 700; font-size: 18px; min-width: 3em; text-align: center; }
@@ -210,7 +215,7 @@
   <h1><img id="logo" alt="" src="data:,">Crown Crows · Monitoring</h1>
   <span class="hmeta"><span class="meta"><span class="dot" id="fresh"></span><span id="status">Connecting…</span></span>
     <a href="#mood" class="alerts" id="alerts" hidden title="Open the details"></a></span>
-  <span><button id="csv">Export CSV</button> <button id="json">Export JSON</button> <button id="restartDetector" hidden title="Restart the detector program (about 75 s until it is ready again; home network only)">🔁 Restart detector</button> <button id="reboot" class="danger" hidden title="Reboot the Pi (about 2 minutes; home network only)">🔄 Reboot</button> <button id="poweroff" class="danger" hidden title="Shut the Pi down, e.g. for work on the hardware (home network only)">⏻ Power off</button></span>
+  <span><button id="csv">Export CSV</button> <button id="json">Export JSON</button> <button id="restartDetector" hidden title="Restart the detector program (about 75 s until it is ready again)">🔁 Restart detector</button> <button id="reboot" class="danger" hidden title="Reboot the Pi (about 2 minutes)">🔄 Reboot</button> <button id="poweroff" class="danger" hidden title="Shut the Pi down, e.g. for work on the hardware (home network only)">⏻ Power off</button></span>
 </header>
 <div class="controls">
 <div class="switch" role="group" aria-label="View">
@@ -230,13 +235,23 @@
   <div class="check-row" id="checks"><div class="check empty">Waiting for the first check…</div></div>
 </section>
 
-<section class="card strict" id="strict" aria-label="Recognition threshold" hidden>
+<section class="card strict" id="strict" aria-label="Recognition threshold">
   <div class="strict-head"><b>🎯 How sure must the model be?</b><span class="meta" id="strictNow">loading…</span></div>
   <div class="strict-row" id="strictControls"><input type="range" id="strictRange" min="0.30" max="0.99" step="0.01" value="0.60" aria-label="Threshold">
     <output id="strictVal">0.60</output><button id="strictSave" disabled>Save</button></div>
   <div class="scale" id="strictScale" title="Best score of each of the last 60 visits: green dot = was YES, grey = was NO; the line is the chosen threshold"></div>
   <div class="meta" id="strictPreview"></div>
   <p class="meta" id="strictHelp">Higher: fewer non-caps get a snack, but some real caps may be refused. Lower: the opposite. A change applies from the next visit.</p>
+</section>
+
+<section class="card" id="boxCtl" aria-label="Box controls">
+  <div class="strict-head"><b>🛠️ Box controls</b><span class="meta" id="boxNote"></span></div>
+  <div class="ctl-row"><button id="pauseBtn">⏸ Pause the box</button><span class="meta" id="pauseState"></span></div>
+  <div class="ctl-row"><span id="foodLine" class="food-line">🍽️ Food: set the dispenser's capacity first</span>
+    <span class="bar" id="foodBar" hidden><i id="foodFill"></i></span>
+    <button id="foodRefilled">🍽️ Refilled</button><button id="foodCap">✏️ Capacity</button></div>
+  <div class="ctl-row"><button id="snapBtn">📷 Live photo</button><span class="meta" id="snapNote">the light goes on for a second; for aiming, focus and light checks</span></div>
+  <div id="snapBox" hidden><img id="snapImg" alt="Live photo of the tray (green frame: the area the model sees)"><div class="meta" id="snapMeta"></div></div>
 </section>
 
 <section id="fun">
@@ -514,6 +529,13 @@ const GUIDE = {
     cause: "Something blocking the tray, a power problem, or a missing calibration.",
     steps: ["Check the tray moves freely by hand (power off).", "Look at the servo column in \"Recent visits\" and at the system log errors.", "If the calibration changed: recalibrate (docs/SERVO.md)."],
   },
+  food_low: {
+    title: "Food is running low",
+    meaning: "By the portion counter, the dispenser has few or no portions left since it was last marked as refilled.",
+    why: "Crows that bring a cap and get nothing may lose interest; the counter is an estimate (it counts reward strokes, not food that actually came out).",
+    cause: "Reward strokes since the last refill reached the capacity you entered, or came close.",
+    steps: ["Refill the dispenser.", "Press \"Refilled\" in Box controls to restart the count.", "If the estimate is off, correct the capacity there."],
+  },
   restarts: {
     title: "Detector restarted by itself",
     meaning: "Since the Pi started, systemd had to restart the detector after it stopped unexpectedly (manual restarts are not counted).",
@@ -537,6 +559,7 @@ const FUN = {
   no_connection: ["📡", "Can't reach the crow office", "Check the Pi has power and you're on the same Wi-Fi."],
   detector_down: ["😴", "The detector is napping", "It usually wakes up by itself within a minute."],
   undervoltage_now: ["🪫", "The Pi's power is low at this moment", "Usually gone within seconds; it becomes an alarm only if it lasts 30 s."],
+  food_low: ["🍽️", "The food is running low", "Refill it, then press \"Refilled\" in Box controls."],
   restarts: ["🔁", "The detector restarted by itself", "Look at the errors in Nerd mode; a restart after a crash or a power dip is worth a look."],
   undervoltage_boot: ["🧠", "The Pi's power dipped below 4.63 V since it started", "A record only; it clears with the next reboot."],
   work_undervoltage: ["⚡📸", "Short power dips when the Pi starts working (photos + recognition)", "Nothing to do now: nothing has failed. If it ever does, a stronger supply or a shorter cable."],
@@ -548,8 +571,8 @@ const FUN = {
   memory: ["🧠", "The Pi's head is full", "A reboot usually helps."],
 };
 const SEVERITY = { no_connection: "urgent", detector_down: "urgent", undervoltage_now: "info", servo_failure: "urgent",
-  servo_undervoltage: "info", work_undervoltage: "info", restarts: "soon", hot: "soon", disk: "soon", memory: "soon", undervoltage_boot: "info", clock: "info" };
-const ISSUE_TARGET = { servo_undervoltage: "power", work_undervoltage: "power", restarts: "health", undervoltage_boot: "power", undervoltage_now: "health", clock: "health",
+  servo_undervoltage: "info", work_undervoltage: "info", food_low: "soon", restarts: "soon", hot: "soon", disk: "soon", memory: "soon", undervoltage_boot: "info", clock: "info" };
+const ISSUE_TARGET = { food_low: "boxCtl", servo_undervoltage: "power", work_undervoltage: "power", restarts: "health", undervoltage_boot: "power", undervoltage_now: "health", clock: "health",
   hot: "now", disk: "now", memory: "now", servo_failure: "visits", detector_down: "health", no_connection: "now" };
 const SEVERITY_TEXT = { urgent: "🚨 urgent", soon: "🛠️ fix soon", info: "ℹ️ just so you know" };
 let lowSince = null, openIssues = new Set(), lastIssuesHtml = "", lastFunIssuesHtml = "", lastLevel = "warn", lastIssues = [];
@@ -600,6 +623,9 @@ function assess() {
     // Short dips are a note: in weeks of logs they never caused a failure. Only a dip lasting 30 s is an alarm.
     if (lowNow) issues.push(["undervoltage_now", lowFor >= 30 ? "bad" : "info", `low for ${Math.round(lowFor)} s now; ${since}`]);
     else if (h.throttled_meaning.includes("undervoltage since boot")) issues.push(["undervoltage_boot", "info", since]);
+    const left = foodLeft();
+    if (left && left.remaining <= Math.max(1, Math.round(left.capacity * 0.15)))
+      issues.push(["food_low", left.remaining <= 0 ? "warn" : "info", `about ${Math.max(0, left.remaining)} of ${left.capacity} portions left`]);
     if (h.service_restarts > 0) issues.push(["restarts", "warn", `${h.service_restarts} automatic restart${h.service_restarts === 1 ? "" : "s"} since the Pi started`]);
     if (!h.clock_synchronized) issues.push(["clock", "warn", "the Pi reports no network time"]);
   }
@@ -708,7 +734,7 @@ $("restartDetector").addEventListener("click", async () => {
 
 // Header: the open problems again, in a few words; a click opens the full explanation.
 const SHORT = { no_connection: "no connection", detector_down: "detector stopped", undervoltage_now: "power low now",
-  undervoltage_boot: "power dips since start", servo_undervoltage: "dips on servo moves", work_undervoltage: "power dips while working", restarts: "detector restarted", servo_failure: "servo failed",
+  undervoltage_boot: "power dips since start", servo_undervoltage: "dips on servo moves", work_undervoltage: "power dips while working", restarts: "detector restarted", food_low: "food low", servo_failure: "servo failed",
   hot: "CPU hot", disk: "disk almost full", memory: "memory low", clock: "clock not synced" };
 let lastAlerts = "";
 function renderAlerts() {
@@ -884,6 +910,7 @@ const ARM = {
   starting: ["wait", "🔥 Warming up", (s) => `model, camera and sensor; ready in about ${s} s`],
   visit: ["busy", "📸 Busy: a visit is on", () => "taking photos and deciding"],
   off: ["off", "🔴 Not armed", () => "the detector is not running"],
+  paused: ["wait", "⏸ Paused", () => "motion is ignored until you press Resume (Box controls)"],
 };
 let armAt = 0, armPause = 0;
 function renderArm() {
@@ -1013,10 +1040,6 @@ function renderStrict() {
   const t = Number(range.value);
   $("strictVal").textContent = t.toFixed(2);
   $("strictNow").textContent = `now ${now.value.toFixed(2)} (${now.from})`;
-  const home = !!(current && current.from_home);
-  // The whole block exists only on the home network.
-  $("strict").hidden = !home;
-  if (!home) return;
   $("strictSave").disabled = Math.abs(t - now.value) < 0.005;
   const rows = logs.detect.rows.filter((r) => r.decision && r.photos && r.photos.length);
   const scored = rows.map((r) => ({ r, best: Math.max(...r.photos.map((p) => p.cap_score)) }));
@@ -1045,6 +1068,78 @@ $("strictSave").addEventListener("click", async () => {
   safely(renderStrict);
 });
 
+// Box controls: pause, food counter, live photo. Each is one small POST; nothing runs on the Pi in between.
+function foodLeft() {
+  const food = current && current.food;
+  if (!food || !food.capacity) return null;
+  const since = (food.refilled_at || 0) * 1000;
+  const given = logs.detect.rows.filter((r) => r.reward && Date.parse(r.wall_clock_unreliable) >= since).length;
+  return { capacity: food.capacity, given, remaining: food.capacity - given, since };
+}
+async function post(path, body) {
+  const response = await fetch(path, { method: "POST", cache: "no-store", headers: { "Content-Type": "application/json", "X-Token": token }, body: JSON.stringify(body) });
+  const answer = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(answer.error || "HTTP " + response.status);
+  return answer;
+}
+function renderBoxCtl() {
+  const paused = !!(current && current.paused);
+  $("pauseBtn").textContent = paused ? "▶ Resume" : "⏸ Pause the box";
+  $("pauseState").textContent = paused ? "Paused: motion is ignored, nothing is served; the status light blinks yellow every 10 s." : "Pause to clean or refill: a hand at the tray then starts no visit and the tray does not move.";
+  const food = foodLeft(), bar = $("foodBar");
+  if (!food) { $("foodLine").textContent = "🍽️ Food: set the dispenser's capacity first (portions)"; bar.hidden = true; }
+  else {
+    const share = Math.max(0, Math.min(1, food.remaining / food.capacity));
+    $("foodLine").textContent = `🍽️ about ${Math.max(0, food.remaining)} of ${food.capacity} portions left`;
+    $("foodFill").style.width = share * 100 + "%"; bar.hidden = false;
+    bar.className = "bar" + (food.remaining <= 0 ? " empty" : share <= 0.15 ? " low" : "");
+    $("foodLine").title = `${food.given} reward strokes since ${new Date(food.since).toLocaleString()} (strokes, not food measured)`;
+  }
+}
+$("pauseBtn").addEventListener("click", async () => {
+  const resume = current && current.paused;
+  try { await post("/api/pause", { paused: !resume }); if (current) current.paused = !resume; safely(renderBoxCtl); }
+  catch (error) { alert("⏸ Not changed: " + error.message); }
+});
+$("foodRefilled").addEventListener("click", async () => {
+  if (!current || !current.food || !current.food.capacity) return alert("Set the capacity first (✏️ Capacity).");
+  if (!confirm("Mark the dispenser as full again? The count starts from zero.")) return;
+  try { current.food = await post("/api/food", { refilled: true }); safely(renderBoxCtl); safely(assess); safely(renderFun); }
+  catch (error) { alert("🍽️ Not saved: " + error.message); }
+});
+$("foodCap").addEventListener("click", async () => {
+  const now = current && current.food && current.food.capacity;
+  const answer = prompt("How many portions does the dispenser hold when full?", now || "");
+  if (answer === null) return;
+  const capacity = parseInt(answer, 10);
+  if (!(capacity >= 1)) return alert("A whole number of portions, please.");
+  try { current.food = await post("/api/food", { capacity }); safely(renderBoxCtl); safely(assess); safely(renderFun); }
+  catch (error) { alert("🍽️ Not saved: " + error.message); }
+});
+let snapBest = 0;
+$("snapBtn").addEventListener("click", async () => {
+  const button = $("snapBtn"), note = $("snapNote");
+  button.disabled = true; button.textContent = "📷 Taking…";
+  try {
+    const before = await (await api("/api/snapshot-info")).json();
+    await post("/api/snapshot", {});
+    let info = before;
+    for (let i = 0; i < 45 && info.taken_at === before.taken_at; i++) { await new Promise((r) => setTimeout(r, 1000)); info = await (await api("/api/snapshot-info")).json(); }
+    if (info.taken_at === before.taken_at) throw new Error("no answer from the detector (busy with a visit, or not running)");
+    if (info.error) throw new Error(info.error);
+    const blob = await (await api("/api/snapshot")).blob();
+    if ($("snapImg").src.startsWith("blob:")) URL.revokeObjectURL($("snapImg").src);
+    $("snapImg").src = URL.createObjectURL(blob);
+    snapBest = Math.max(snapBest, info.sharpness);
+    const ms = info.shutter_us >= 1000 ? (info.shutter_us / 1000).toFixed(1) + " ms" : info.shutter_us + " µs";
+    $("snapMeta").innerHTML = `${new Date(info.taken_at * 1000).toLocaleTimeString()} · tray grey level <b>${info.luma}</b> of 255 (aim for 45–140)` +
+      (info.white > 0.05 ? ` · <b class="warn">⚪ ${Math.round(info.white * 100)} % of the tray is white</b>` : "") +
+      ` · sharpness <b>${info.sharpness}</b> (best this visit to the page: ${snapBest}; higher is sharper, compare while turning the focus) · exposure ${ms}${info.gain > 1.05 ? " ×" + info.gain.toFixed(1) : ""}`;
+    $("snapBox").hidden = false; note.textContent = "";
+  } catch (error) { note.textContent = "Not taken: " + error.message; }
+  button.disabled = false; button.textContent = "📷 Live photo";
+});
+
 async function pollNow() {
   clearTimeout(nowTimer);
   if (document.hidden) return;  // nothing is read while the page is in the background
@@ -1059,9 +1154,13 @@ async function pollNow() {
     lastSeen = key;
     nowFailed = false;
   } catch (error) { current = null; nowFailed = true; }
-  safely(renderNow); safely(assess); safely(renderFun); safely(renderArm); safely(renderStrict);
+  safely(renderNow); safely(assess); safely(renderFun); safely(renderArm); safely(renderStrict); safely(renderBoxCtl);
   // Control buttons are offered only on the home network (and, for power, when the system allows them).
-  $("poweroff").hidden = !(current && current.power_off_allowed);
+  // Power off cannot be undone from outside (the Pi cannot be switched on remotely): shown, but usable only at home.
+  $("poweroff").hidden = !(current && current.power_off_possible);
+  $("poweroff").disabled = !(current && current.power_off_allowed);
+  $("poweroff").title = current && current.power_off_allowed ? "Shut the Pi down, e.g. for work on the hardware"
+    : "Power off works only from the home network: from outside the Pi could not be switched on again";
   $("reboot").hidden = !(current && current.reboot_allowed);
   $("restartDetector").hidden = !(current && current.restart_allowed);
   nowTimer = setTimeout(pollNow, 3000);  // always re-armed, even if a display part failed

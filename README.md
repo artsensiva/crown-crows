@@ -75,6 +75,7 @@ The RGB light that illuminates the tray for photos also shows the start-up, and 
 | **Three green flashes, then dark** | **Ready**; in normal operation the light is off except for photos |
 | White | Taking photos during a visit |
 | Red blip every 5 s | Running, but without the servo (e.g. not calibrated) |
+| Yellow blip every 10 s | Paused from the dashboard: motion is ignored |
 | Red, blinking fast | Stopped by an error; the service restarts by itself 30 s later |
 
 ## Results

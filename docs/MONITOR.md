@@ -115,23 +115,35 @@ Measured on 2026-10-17 after fitting a 2200 µF capacitor at the servo, over 9 v
 
 **Test with 3 cores (7 visits, 2026-10-17):** 0.95 s per photo, YES in 2.6 s, NO in 6.5 s, no dip while recognising. No dip at all in this test, including the 14 servo moves (with 2 cores every tilt to the reward side had one); that difference cannot come from the core count and is unexplained so far. 3 cores are now the default.
 
-## 🎯 Threshold from the dashboard (home network only)
+## 🎯 Threshold from the dashboard
 
-Under 🔍 Last checks (both modes, home network only): a slider for the recognition threshold (0.30–0.99) with a live preview from the logged visits: a scale with every visit's best score (green = was YES, grey = was NO, outlined = would flip), how many YES would become NO (an estimate: a YES stopped at the first photo above the old threshold) and how many NO would become YES (exact: a NO analysed all five photos), and what the last visit would have been. **Save** writes `config/local.accept.json`; the detector reads it at the start of every visit (no restart), and each visit record keeps the threshold it used. Without the file, `--accept` from the service applies.
+Under 🔍 Last checks (both modes): a slider for the recognition threshold (0.30–0.99) with a live preview from the logged visits: a scale with every visit's best score (green = was YES, grey = was NO, outlined = would flip), how many YES would become NO (an estimate: a YES stopped at the first photo above the old threshold) and how many NO would become YES (exact: a NO analysed all five photos), and what the last visit would have been. **Save** writes `config/local.accept.json`; the detector reads it at the start of every visit (no restart), and each visit record keeps the threshold it used. Without the file, `--accept` from the service applies.
 
-The block exists only on the home network (as Power off): from the internet it is not shown at all, and the server refuses a change (403).
+Works from the internet too (behind the password), like every control except Power off (see "Who may do what").
 
 Trade-off on the 126 reviewed visits of 2026-10-17 (84 caps, 9 accepted non-caps): 0.70 refuses 2 caps and still accepts 8 non-caps; 0.80: 4 caps refused, 6 non-caps accepted; 0.85: 11 / 5; 0.90: 14 / 5; 0.95: 17 / 1.
 
 ## Reboot and Restart detector buttons (2026-11-20)
 
-Next to **⏻ Power off**, on the home network only (the same rule as the threshold):
+Next to **⏻ Power off** (behind the password, also from the internet):
 
 - **🔁 Restart detector** restarts the detector program (`crown-crows-detect`) without rebooting the Pi: for a stuck camera or to apply a changed setting. About 75 s until it is ready again; a visit in progress is cut off (the dashboard warns). Needs no extra permission.
 - **🔄 Reboot** reboots the Pi (about 2 minutes; the page reloads itself when the Pi is back). It needs the polkit rule to allow `reboot`: the button stays hidden until the rule on the Pi is updated (`deploy/50-crown-crows-poweroff.rules`, installed by `deploy/install.sh`; by hand: `sed "s/USER_NAME/$USER/" ~/crown-crows/deploy/50-crown-crows-poweroff.rules | sudo tee /etc/polkit-1/rules.d/50-crown-crows-poweroff.rules`). Power off hides in the same way when the rule is missing.
 
-All three are `POST` calls that need the token and a confirmation word; from the internet they are refused (403).
+All are `POST` calls that need the token and a confirmation word.
 
 ## Exposure in the visit details
 
 Under each visit's photo table: the exposure used for each analysed photo and the tray's grey level, with a warning when part of the tray was fully white ([ALGORITHM](ALGORITHM.md#exposure-control-2026-11-20)).
+
+## Who may do what (2026-11-20)
+
+The whole interface is available from the internet (Tailscale Funnel) behind the password: the threshold, Restart detector, Reboot, Box controls. **Power off is the one exception**: its button is shown, but disabled, outside the home network, and the server refuses it (403), because the Pi cannot be switched on again remotely. Every action is a `POST` that needs the access token (a custom header, so another site cannot trigger it); the password login locks for a growing time after wrong attempts.
+
+## 🛠️ Box controls
+
+A card under the threshold (both modes):
+
+- **⏸ Pause / ▶ Resume.** While paused, motion is ignored: a hand at the tray (cleaning, refilling) starts no visit, no light and no stroke; the servo keeps holding the tray. The status light blinks yellow for 50 ms every 10 s, the arm indicator shows *⏸ Paused*. Stored in `config/local.pause.json` (survives a restart); the detector checks it with one `stat()` per loop.
+- **🍽️ Food counter.** Set the dispenser's capacity in portions once (✏️ Capacity) and press 🍽️ Refilled after each refill: the card shows how many portions are left, counted from the reward strokes in the visit log since then (strokes, not food measured). At 15 % left a note appears, at zero a warning. Stored in `config/local.food.json`; the counting is done in the browser, so it costs nothing on the Pi.
+- **📷 Live photo.** The detector switches the light on for about a second, takes one photo with the current exposure (which also corrects it), and the page shows it (820 px, about 60 KB) with the tray area outlined in green and the numbers that matter for aiming and focusing: the tray's grey level (aim for 45–140), the share of white pixels, the **sharpness** (variance of the Laplacian over the tray area: compare the values while turning the lens, higher is sharper) and the exposure. The server only writes a request file in `/dev/shm`; the detector handles it between visits (a visit in progress delays it by up to about 10 s), so the camera and the lights have a single owner. On demand only: no energy between requests.

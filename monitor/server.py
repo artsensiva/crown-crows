@@ -12,9 +12,11 @@ access from the internet a password can be set (python monitor/server.py
 the login for a growing time (1 min, doubling, at most 1 h), kept in a file so
 the lock survives the server's idle exit.
 
-Actions exist besides reading, all from the home network only: POST /api/restart-detector restarts the
-detector service and POST /api/reboot reboots the Pi (token and a confirmation word required); POST
-/api/accept sets the
+Actions exist besides reading, all behind the token (so behind the password from the internet), except
+Power off, which works only from the home network: POST /api/restart-detector restarts the detector
+service, POST /api/reboot reboots the Pi (a confirmation word is required), POST /api/pause pauses or
+resumes the box, POST /api/food keeps the food counter, POST /api/snapshot asks the detector for a live
+photo (GET /api/snapshot and /api/snapshot-info return it); POST /api/accept sets the
 recognition threshold in config/local.accept.json, which the detector reads at
 the start of every visit; and POST /api/poweroff (token and the word
 "poweroff" required) shuts the Pi down, for work on the hardware. It needs the
@@ -44,6 +46,12 @@ CAPTURES = ROOT / "captures"
 TOKEN_FILE = ROOT / "config/local.monitor.json"
 LOCK_FILE = ROOT / "config/local.monitor-lock.json"
 ACCEPT_FILE = ROOT / "config/local.accept.json"
+PAUSE_FILE = ROOT / "config/local.pause.json"
+FOOD_FILE = ROOT / "config/local.food.json"
+# Live photo: the server only writes the request file; the detector takes the photo (same names as in detect.py).
+SNAPSHOT_REQUEST = Path("/dev/shm/crown-crows-snapshot-request")
+SNAPSHOT_IMAGE = Path("/dev/shm/crown-crows-snapshot.jpg")
+SNAPSHOT_INFO = Path("/dev/shm/crown-crows-snapshot.json")
 PBKDF2_ROUNDS = 60_000  # about 0.3 s per attempt on a Pi 3
 IDLE_SECONDS = 120
 MAX_CHUNK = 4_000_000
@@ -168,6 +176,10 @@ def now_reading(server):
         state, phase = "ready once the motion sensor goes quiet", "settling"
     else:
         state, phase = "ready: waiting for a crow", "ready"
+    paused = bool((read_json(PAUSE_FILE) or {}).get("paused"))
+    if paused and phase in ("ready", "settling", "pause"):
+        state, phase, ready_in = "paused from the dashboard: motion is ignored", "paused", None
+    reading["paused"] = paused
     reading["trigger"] = {"phase": phase, "ready_in_seconds": None if ready_in is None else round(ready_in, 1)}
     # System figures from files only (no external programs): well under 1 ms.
     def read_number(path, scale):
@@ -196,6 +208,19 @@ def errors():
     kernel = run(["journalctl", "-k", "--no-pager", "-o", "short-iso", "--grep", "Undervoltage detected"], timeout=15)
     lines = lambda text: [line for line in text.splitlines() if line and not line.startswith("--")]
     return {"service": lines(service)[-50:], "kernel_undervoltage": lines(kernel)[-500:]}
+
+
+def read_json(path):
+    try:
+        return json.loads(path.read_text())
+    except (OSError, ValueError):
+        return None
+
+
+def write_json(path, data):
+    temporary = path.with_suffix(".tmp")
+    temporary.write_text(json.dumps(data) + "\n")
+    temporary.replace(path)  # atomic: a reader never sees half a file
 
 
 def accept_setting():
@@ -265,7 +290,7 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         self.server.last_request = time.monotonic()
         path = urlparse(self.path).path
-        if path not in ("/api/login", "/api/accept", *ACTIONS):
+        if path not in ("/api/login", "/api/accept", "/api/pause", "/api/food", "/api/snapshot", *ACTIONS):
             return self.fail(404, "not found")
         length = int(self.headers.get("Content-Length") or 0)
         if not 0 < length <= 1024:
@@ -278,8 +303,6 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/accept":
             if not self.server.token or not hmac.compare_digest(self.headers.get("X-Token", ""), self.server.token):
                 return self.fail(401, "token required")
-            if not self.from_home():
-                return self.fail(403, "the threshold can be changed only from the home network")
             value = body.get("accept")
             if not isinstance(value, (int, float)) or not 0.3 <= value <= 0.99:
                 return self.fail(400, "threshold must be between 0.30 and 0.99")
@@ -287,14 +310,37 @@ class Handler(BaseHTTPRequestHandler):
             temporary.write_text(json.dumps({"accept": round(float(value), 2), "set_at": time.time()}) + "\n")
             temporary.replace(ACCEPT_FILE)  # atomic: the detector never reads half a file
             return self.send(200, json.dumps({"accept": round(float(value), 2)}).encode())
+        if path in ("/api/pause", "/api/food", "/api/snapshot"):
+            if not self.server.token or not hmac.compare_digest(self.headers.get("X-Token", ""), self.server.token):
+                return self.fail(401, "token required")
+            if path == "/api/snapshot":
+                SNAPSHOT_REQUEST.touch()  # the detector handles it between visits, usually within a second
+                return self.send(202, json.dumps({"requested": True}).encode())
+            if path == "/api/pause":
+                paused = body.get("paused")
+                if not isinstance(paused, bool):
+                    return self.fail(400, "paused must be true or false")
+                write_json(PAUSE_FILE, {"paused": paused, "set_at": time.time()})
+                return self.send(200, json.dumps({"paused": paused}).encode())
+            food = read_json(FOOD_FILE) or {}
+            capacity = body.get("capacity")
+            if capacity is not None:
+                if not isinstance(capacity, int) or isinstance(capacity, bool) or not 1 <= capacity <= 10000:
+                    return self.fail(400, "capacity must be a whole number from 1 to 10000")
+                food["capacity"] = capacity
+                food.setdefault("refilled_at", time.time())  # a first capacity starts counting now
+            if body.get("refilled") is True:
+                food["refilled_at"] = time.time()
+            write_json(FOOD_FILE, food)
+            return self.send(200, json.dumps(food).encode())
         if path in ACTIONS:
             word, method, command = ACTIONS[path]
             if not self.server.token or not hmac.compare_digest(self.headers.get("X-Token", ""), self.server.token):
                 return self.fail(401, "token required")
             if body.get("confirm") != word:
                 return self.fail(400, "confirmation missing")
-            if not self.from_home():
-                return self.fail(403, "this works only from the home network")
+            if word == "poweroff" and not self.from_home():
+                return self.fail(403, "power off works only from the home network: it cannot be undone remotely")
             if method and not power_rights(self.server).get(method):
                 return self.fail(403, "not allowed: install the polkit rule (deploy/install.sh)")
             # Answer first, then act: systemd stops the detector cleanly.
@@ -358,9 +404,17 @@ class Handler(BaseHTTPRequestHandler):
                     self.server.health_cache, self.server.health_at = health(), now
                 return self.send(200, json.dumps(self.server.health_cache).encode())
             if url.path == "/api/now":
-                return self.send(200, json.dumps(dict(now_reading(self.server), power_off_allowed=self.from_home() and power_rights(self.server)["CanPowerOff"],
-                                                                   reboot_allowed=self.from_home() and power_rights(self.server)["CanReboot"],
-                                                                   restart_allowed=self.from_home(), from_home=self.from_home(), accept_setting=accept_setting())).encode())
+                return self.send(200, json.dumps(dict(now_reading(self.server), power_off_possible=power_rights(self.server)["CanPowerOff"],
+                                                                   power_off_allowed=self.from_home() and power_rights(self.server)["CanPowerOff"],
+                                                                   reboot_allowed=power_rights(self.server)["CanReboot"],
+                                                                   restart_allowed=True, from_home=self.from_home(), accept_setting=accept_setting(),
+                                                                   food=read_json(FOOD_FILE) or {})).encode())
+            if url.path == "/api/snapshot":
+                if not SNAPSHOT_IMAGE.is_file():
+                    return self.fail(404, "no live photo yet")
+                return self.send(200, SNAPSHOT_IMAGE.read_bytes(), "image/jpeg")
+            if url.path == "/api/snapshot-info":
+                return self.send(200, SNAPSHOT_INFO.read_bytes() if SNAPSHOT_INFO.is_file() else b"{}")
             if url.path == "/api/errors":
                 return self.send(200, json.dumps(errors()).encode())
             return self.fail(404, "not found")

@@ -35,6 +35,7 @@ class StatusLight:
         "starting": ((0, 0, 1), None, None),        # blue, steady
         "warmup": ((0, 0, 1), .1, 1.0),             # blue blink every second
         "degraded": ((1, 0, 0), .05, 5.0),          # red blip every 5 s: running without servo
+        "paused": ((1, 1, 0), .05, 10.0),           # yellow blip every 10 s: paused from the dashboard
         "error": ((1, 0, 0), .1, .5),               # red blinking: stopped by an error
     }
 
