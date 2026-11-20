@@ -210,7 +210,7 @@
   <h1><img id="logo" alt="" src="data:,">Crown Crows · Monitoring</h1>
   <span class="hmeta"><span class="meta"><span class="dot" id="fresh"></span><span id="status">Connecting…</span></span>
     <a href="#mood" class="alerts" id="alerts" hidden title="Open the details"></a></span>
-  <span><button id="csv">Export CSV</button> <button id="json">Export JSON</button> <button id="poweroff" class="danger" hidden title="Shut the Pi down, e.g. for work on the hardware (home network only)">⏻ Power off</button></span>
+  <span><button id="csv">Export CSV</button> <button id="json">Export JSON</button> <button id="restartDetector" hidden title="Restart the detector program (about 75 s until it is ready again; home network only)">🔁 Restart detector</button> <button id="reboot" class="danger" hidden title="Reboot the Pi (about 2 minutes; home network only)">🔄 Reboot</button> <button id="poweroff" class="danger" hidden title="Shut the Pi down, e.g. for work on the hardware (home network only)">⏻ Power off</button></span>
 </header>
 <div class="controls">
 <div class="switch" role="group" aria-label="View">
@@ -672,6 +672,40 @@ $("poweroff").addEventListener("click", async () => {
   } catch (error) { alert("⏻ The Pi did not answer: " + error.message); }
 });
 
+// Reboot: the page waits for the Pi to go down and come back, then reloads itself.
+$("reboot").addEventListener("click", async () => {
+  const busy = current && current.trigger && current.trigger.phase === "visit";
+  if (!confirm((busy ? "A visit is in progress right now.\n\n" : "") + "Reboot the Pi?\n\nIt is back in about 2 minutes; the detector needs about a minute more to be ready.")) return;
+  try {
+    const response = await fetch("/api/reboot", { method: "POST", cache: "no-store",
+      headers: { "Content-Type": "application/json", "X-Token": token }, body: JSON.stringify({ confirm: "reboot" }) });
+    const answer = await response.json().catch(() => ({}));
+    if (!response.ok) return alert("🔄 Not rebooted: " + (answer.error || "HTTP " + response.status));
+  } catch (error) { return alert("🔄 The Pi did not answer: " + error.message); }
+  clearTimeout(timer); clearTimeout(nowTimer);
+  $("offTitle").textContent = "Rebooting… 🔄";
+  $("offText").textContent = "This page reloads by itself when the Pi is back (about 2 minutes).";
+  $("offScreen").hidden = false;
+  let down = false;
+  const watch = setInterval(async () => {
+    try { await fetch("/", { cache: "no-store" }); if (down) { clearInterval(watch); location.reload(); } }
+    catch (error) { down = true; }
+  }, 3000);
+});
+$("restartDetector").addEventListener("click", async () => {
+  const button = $("restartDetector"), busy = current && current.trigger && current.trigger.phase === "visit";
+  if (!confirm((busy ? "A visit is in progress right now.\n\n" : "") + "Restart the detector program?\n\nCrows are not served for about 75 s.")) return;
+  button.disabled = true;
+  try {
+    const response = await fetch("/api/restart-detector", { method: "POST", cache: "no-store",
+      headers: { "Content-Type": "application/json", "X-Token": token }, body: JSON.stringify({ confirm: "restart" }) });
+    const answer = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(answer.error || "HTTP " + response.status);
+    button.textContent = "🔁 Restarting…";
+  } catch (error) { alert("🔁 Not restarted: " + error.message); }
+  setTimeout(() => { button.textContent = "🔁 Restart detector"; button.disabled = false; }, 8000);
+});
+
 // Header: the open problems again, in a few words; a click opens the full explanation.
 const SHORT = { no_connection: "no connection", detector_down: "detector stopped", undervoltage_now: "power low now",
   undervoltage_boot: "power dips since start", servo_undervoltage: "dips on servo moves", work_undervoltage: "power dips while working", restarts: "detector restarted", servo_failure: "servo failed",
@@ -904,6 +938,13 @@ function checkDetails(r, previous) {
     `<div>⚖️ ${why}</div>` +
     `<div>⏱️ decided ${r.trigger_to_decision_seconds != null ? r.trigger_to_decision_seconds.toFixed(1) + " s" : "–"} after the motion · ${scored.length} of ${r.photos_taken || 0} photos analysed</div>` +
     (shots ? `<table><tr><th>#</th><th>taken</th><th>model saw</th><th>cap</th><th>took</th></tr>${shots}</table>` : "") +
+    (() => {  // the camera's exposure for each analysed photo and how bright the tray came out
+      const lines = (r.photos || []).filter((p) => p.exposure).map((p) => {
+        const e = p.exposure, ms = e.shutter_us >= 1000 ? (e.shutter_us / 1000).toFixed(1) + " ms" : e.shutter_us + " µs";
+        return `${p.photo}: ${ms}${e.gain > 1.05 ? " ×" + e.gain.toFixed(1) : ""} → grey ${e.luma}${e.white > 0.05 ? ` <b class="warn">⚪ ${Math.round(e.white * 100)} % white</b>` : ""}`;
+      });
+      return lines.length ? `<div>🎚️ exposure → tray grey level (0–255): ${lines.join(" · ")}</div>` : "";
+    })() +
     `<div>🦾 ${stroke ? `${stroke} · ${r.servo.outcome === "DONE" ? "✅ done" : "⚠️ " + escapeHtml(r.servo.outcome)}` : "servo off"}` +
     (moves.length ? " · " + (moves.some((m) => "dip_started_during_move" in m)
       ? (moves.some((m) => m.dip_started_during_move) ? "⚡ a power dip began during the stroke" : dips ? "🔋 no new dip during the stroke (Pi still low from recognition)" : "🔋 no power dip during the stroke")
@@ -1019,7 +1060,10 @@ async function pollNow() {
     nowFailed = false;
   } catch (error) { current = null; nowFailed = true; }
   safely(renderNow); safely(assess); safely(renderFun); safely(renderArm); safely(renderStrict);
-  $("poweroff").hidden = !(current && current.power_off_allowed);  // only offered on the home network
+  // Control buttons are offered only on the home network (and, for power, when the system allows them).
+  $("poweroff").hidden = !(current && current.power_off_allowed);
+  $("reboot").hidden = !(current && current.reboot_allowed);
+  $("restartDetector").hidden = !(current && current.restart_allowed);
   nowTimer = setTimeout(pollNow, 3000);  // always re-armed, even if a display part failed
 }
 

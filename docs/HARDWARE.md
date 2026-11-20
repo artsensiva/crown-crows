@@ -6,7 +6,7 @@
 |---|---:|---|
 | Raspberry Pi 3 Model B (1 GB) | 1 | Main controller; runs everything offline |
 | microSD card, 8 GB or more (A1 or better) | 1 | Operating system, engine, photos and logs ([DEPLOY](DEPLOY.md#storage-needed)) |
-| Camera Module V2, IMX219 | 1 | Photos of the tray, exposure fixed once per start |
+| Camera Module V2, IMX219 | 1 | Photos of the tray; exposure metered at start and corrected after each photo ([ALGORITHM](ALGORITHM.md#exposure-control-2026-11-20)) |
 | Standard 15-pin CSI ribbon | 1 | Pi 3B to camera |
 | PIR HC-SR501 (identified from the board, 2026-10-14) | 1 | Settings: see "PIR settings" below |
 | JAMARA High End Micro 033212 servo | 1 | 4.8–6 V; manufacturer max 600–750 mA; calibrated 605 / 1500 / 2500 µs ([SERVO](SERVO.md)) |

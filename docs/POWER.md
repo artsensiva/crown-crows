@@ -46,7 +46,7 @@ For reference: a 20 000 mAh power bank lasts about 1.5–1.7 days *(est.)*; week
 | The motion sensor is read directly ten times a second, without gpiozero's edge detection, whose helper thread in `lgpio` polled constantly | Detector CPU use while waiting: **5.5 % → 0.2 % of one core** |
 | The status light signals only the start-up (three green flashes when ready) and problems; it is dark in normal operation, and its thread sleeps until the next change | included above |
 | Optional: switch the servo's pulses off at the centre between visits (`--servo-idle release`) | saves the holding current, **but only usable if the tray stays at the centre without pulses**; on the first unit it drifted, causing a jump and an undervoltage at the next stroke, so the default is `hold` |
-| The camera runs only during a visit (one short `rpicam-still` call per photo); exposure is measured once at start-up | camera idle otherwise |
+| The camera runs only during a visit (one short `rpicam-still` call per photo); exposure is measured once at start-up, then corrected from the tray's brightness (2–3 ms per photo) | camera idle otherwise |
 | The light is off except for photos and brief status blips | |
 | The model stays in memory; nothing is loaded or downloaded per visit; no network use at all | no Wi-Fi traffic needed |
 | Logs rotate at 20 MB, photos are capped at 1000 visits (≈ 1.5 GB) | no unbounded SD-card writes |
@@ -100,6 +100,21 @@ For continuous operation, a solar panel must cover about 36 Wh per day plus loss
 - **Raspberry Pi Zero 2 W.** Same type of processor (four Cortex-A53 cores), 512 MB of memory (the detector uses about 170 MB), smaller and with tuning able to idle lower than a Pi 3 ([cnx-software](https://www.cnx-software.com/2021/12/09/raspberry-pi-zero-2-w-power-consumption/); [lo-tech](https://lo-tech.co.uk/wiki/Tuning_the_RaspberryPi_Zero2W_for_Minimum_Power_Consumption)). The software would run unchanged; recognition speed must be re-measured.
 - **Faster recognition** (a small trained model, see [MISSION](MISSION.md#1-recognition)) shortens the high-power part of each visit.
 - **Wake on motion.** A microcontroller watching the PIR could keep the Pi off between visits, but the Pi needs about 30 s to boot, far beyond the time a crow waits, so this only fits a different design.
+
+## Power bank charge level in the dashboard (2026-11-20)
+
+**The Pi cannot read it from the power bank.** A Pi 3 powered through its micro-USB port does not talk to the bank; the Pi has no input to measure its own supply voltage (only the kernel's alarm below about 4.63 V, which also shows when the bank is nearly empty, but a bank holds 5 V until it shuts off, so there is no early warning); and the Pi 3 has no I2C fuel gauge. On the bench no USB device, power-supply entry or I2C bus exists.
+
+Options, from the most practical:
+
+| Option | What it gives | Notes |
+|---|---|---|
+| **INA226 (or INA219) current and voltage sensor on I2C**, in the 5 V line between bank and Pi | Real power in W, energy in Wh since the last charge, and with the bank's capacity entered once, an estimated charge in % and hours left at the current consumption; also replaces the USB power meter planned above | About 3–5 €, four wires to GPIO2/3, 3.3 V and ground. Choose a module with a small shunt (10 mΩ or less) so that its voltage drop stays small (2 A × 10 mΩ = 20 mV); the 0.1 Ω shunt of cheap INA219 boards would worsen the undervoltage. The estimate is ±10–15 % (the bank's real capacity is about 60–70 % of its label) and needs a "bank recharged" reset in the dashboard |
+| A bank with its own display or app (Bluetooth) | The level for a person standing next to the box | Does not reach the dashboard; the protocols are model specific |
+| A UPS HAT with a fuel gauge instead of a power bank | A real charge level over I2C | Replaces the bank, so a different power design |
+| Dashboard alone | "No data for N minutes" when the bank is empty | Already there; says it only afterwards |
+
+Recommended: the INA226 module, which also gives the measured watts needed for every energy estimate in this document.
 
 ## Phone access to statistics (feature to investigate)
 

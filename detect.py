@@ -39,6 +39,47 @@ def tray_rgb(frame, tray, cv2, side=512):
     return cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
 
+# Exposure control. The exposure is metered once at start-up (lights on) and then kept fixed, because
+# a fresh auto-exposure per photo costs seconds. Daylight changes the scene by a factor of a hundred,
+# so after every photo the brightness of the tray area is measured (a few milliseconds) and the
+# exposure for the next photo is corrected; the correction carries over to the next visit.
+SHUTTER_MIN_US, SHUTTER_MAX_US, GAIN_MAX = 100, 60000, 8.0
+LUMA_TARGET, LUMA_LOW, LUMA_HIGH = 90, 45, 140   # median grey level of the tray (0-255); no change inside LOW..HIGH
+
+
+def tray_brightness(frame, tray, cv2, numpy):
+    # Median grey level and share of fully white pixels of the tray area, on every 8th pixel.
+    height, width = frame.shape[:2]
+    left, top, right, bottom = tray
+    crop = frame[int(top * height):int(bottom * height):8, int(left * width):int(right * width):8]
+    grey = cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY)
+    return float(numpy.median(grey)), float((grey >= 250).mean())
+
+
+def adapted_exposure(exposure, median, saturated):
+    # New exposure for the next photo, or the same one while the picture is in range. A clipped
+    # picture does not show how bright the scene really is, so it is cut hard and corrected on the
+    # next photo; otherwise the change follows the (gamma 2.2) grey level, at most 8x darker or 4x
+    # brighter per step (16x for a nearly black picture). The gain stays at 1 while the shutter can do the job (less noise).
+    if saturated > 0.5:
+        factor = 1 / 16
+    elif saturated > 0.2:
+        factor = 1 / 6
+    elif LUMA_LOW <= median <= LUMA_HIGH:
+        return exposure
+    else:
+        factor = min(16.0 if median < 20 else 4.0, max(1 / 8, (LUMA_TARGET / max(median, 1.0)) ** 2.2))
+    product = exposure["shutter_us"] * exposure["gain"] * factor
+    shutter = min(SHUTTER_MAX_US, max(SHUTTER_MIN_US, product))
+    gain = min(GAIN_MAX, max(1.0, product / shutter))
+    return {**exposure, "shutter_us": int(shutter), "gain": round(gain, 3)}
+
+
+def camera_arguments(exposure):
+    return ["--immediate", "--shutter", str(exposure["shutter_us"]), "--gain", str(exposure["gain"]),
+            "--awbgains", f"{exposure['colour_gains'][0]},{exposure['colour_gains'][1]}"]
+
+
 def meter(options, timeout_ms):
     # Auto-exposure with the lights already on; returns fixed camera settings.
     metadata = Path(f"/dev/shm/crown-crows-exposure-{os.getpid()}.json")
@@ -55,9 +96,7 @@ def meter(options, timeout_ms):
     red, blue = values["ColourGains"]
     exposure = {"shutter_us": int(values["ExposureTime"]), "gain": round(values["AnalogueGain"], 3),
                 "colour_gains": [round(red, 4), round(blue, 4)]}
-    camera_args = ["--immediate", "--shutter", str(exposure["shutter_us"]), "--gain", str(exposure["gain"]),
-                   "--awbgains", f"{exposure['colour_gains'][0]},{exposure['colour_gains'][1]}"]
-    return exposure, camera_args
+    return exposure, camera_arguments(exposure)
 
 
 def prune(output, keep):
@@ -161,8 +200,11 @@ def current_accept(options):
     # The threshold can be changed from the dashboard (config/local.accept.json, written by
     # monitor/server.py); it is read at the start of every visit. Without the file, or with an
     # invalid value, --accept applies.
+    path = getattr(options, "accept_file", None)
+    if path is None:
+        return options.accept
     try:
-        value = float(json.loads(options.accept_file.read_text())["accept"])
+        value = float(json.loads(path.read_text())["accept"])
         return value if 0.3 <= value <= 0.99 else options.accept
     except (OSError, ValueError, KeyError, TypeError):
         return options.accept
@@ -181,6 +223,7 @@ def visit(events, boot, triggered, lights, capture, classify, journal, options, 
     batch = options.output / f"{boot}-{events:04d}-{os.getpid()}"
     batch.mkdir(parents=True)
     results = []
+    shots = {}  # photo number -> exposure used and the tray's brightness (when capture reports it)
     accept = current_accept(options)
     yes = threading.Event()
     jobs = queue.Queue()
@@ -214,7 +257,9 @@ def visit(events, boot, triggered, lights, capture, classify, journal, options, 
                 stop.wait(.01)
             if yes.is_set() or stop.is_set():
                 break
-            frame, path = capture(index)
+            frame, path, *info = capture(index)
+            if info and info[0]:
+                shots[index] = info[0]
             shutil.copyfile(path, batch / f"image-{index:02d}.jpg")
             taken += 1
             jobs.put((index, frame))
@@ -231,7 +276,8 @@ def visit(events, boot, triggered, lights, capture, classify, journal, options, 
         "wall_clock_unreliable": datetime.now(timezone.utc).isoformat(),
         "batch": batch.name,
         "photos_taken": taken,
-        "photos": sorted(results, key=lambda result: result["photo"]),
+        "photos": [dict(result, **({"exposure": shots[result["photo"]]} if result["photo"] in shots else {}))
+                   for result in sorted(results, key=lambda result: result["photo"])],
         "accept": accept,
         "decision": decision,
         "trigger_to_decision_seconds": round(decided - triggered, 3),
@@ -286,12 +332,23 @@ def monitor(sensor, lights, recognise, cv2, journal, options, stop, servo=None):
         # a background thread while the next photo is being taken.
         path = Path(f"/dev/shm/crown-crows-photo-{os.getpid()}-{index}.jpg")
         frames.append(path)
+        used = camera["exposure"]
         subprocess.run(["rpicam-still", "--nopreview", *camera["args"], "--width", "1640", "--height", "1232",
                         "--output", str(path)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                        check=True, timeout=options.camera_timeout)
         frame = cv2.imread(str(path))
         if frame is None:
             raise RuntimeError("Camera produced no readable image")
+        if not options.fixed_exposure:
+            import numpy
+            median, saturated = tray_brightness(frame, options.tray, cv2, numpy)
+            info = {"shutter_us": used["shutter_us"], "gain": used["gain"], "luma": round(median), "white": round(saturated, 3)}
+            new = adapted_exposure(used, median, saturated)
+            if (new["shutter_us"], new["gain"]) != (used["shutter_us"], used["gain"]):
+                camera["exposure"], camera["args"] = new, camera_arguments(new)
+                LOG.info("Exposure adapted: tray grey level %.0f, %.0f %% white: shutter %d us, gain %.2f -> %d us, %.2f",
+                         median, saturated * 100, used["shutter_us"], used["gain"], new["shutter_us"], new["gain"])
+            return frame, path, info
         return frame, path
 
     def remeter(timeout_ms=None):
@@ -376,6 +433,8 @@ def parse_options():
     parser.add_argument("--run-seconds", type=float, default=0, help="0 runs without a time limit")
     parser.add_argument("--warmup", type=float, default=60, help="PIR warm-up after start")
     parser.add_argument("--remeter-ms", type=int, default=1000, help="Auto-exposure time when metering")
+    parser.add_argument("--fixed-exposure", action="store_true",
+                        help="Keep the exposure metered at start-up (no correction from the tray's brightness)")
     parser.add_argument("--keep-batches", type=int, default=1000, help="Delete the oldest visit photo folders beyond this many")
     parser.add_argument("--camera-timeout", type=float, default=20)
     parser.add_argument("--lights", choices=sorted(LIGHTS), default="rgb", help="Light hardware; see docs/LIGHTING.md")

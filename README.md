@@ -62,7 +62,7 @@ A crow drops an object into a small intake. A camera looks at it, an on-device v
 5. **Action.** The servo turns 85° to the reward side (YES) or the dump side (NO), holds 0.5 s, and returns to the centre, where it holds the tray until the next visit.
 6. **Record.** Every visit is logged with all photo scores, the decision, the timing and the servo stroke; the photos are kept up to a size limit.
 
-At start-up the servo moves to the centre, the camera measures its exposure once, and the motion sensor warms up for 60 s; the box is ready about 2 minutes after power-on. Details: [ALGORITHM](docs/ALGORITHM.md).
+At start-up the servo moves to the centre, the camera measures its exposure (afterwards corrected from the tray's brightness after every photo, so daylight does not blow the pictures out), and the motion sensor warms up for 60 s; the box is ready about 2 minutes after power-on. Details: [ALGORITHM](docs/ALGORITHM.md).
 
 ## Status light
 

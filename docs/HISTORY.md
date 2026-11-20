@@ -90,3 +90,9 @@ Idle load measured on the Pi: 0.5 % of the four cores in total; Tailscale is now
 ## 2026-10-17: Thread benchmark on 100 visit photos
 
 On the Pi, the same 100 past visit photos with 4, 3, 2 and 1 recognition threads: 0.69, 0.85, 1.18 and 2.18 s per photo. Four threads flagged low power or a capped CPU on 13 % of photos and caused one dip even without camera and light; the others none. The estimated energy differs by about 0.1 % of the daily total between modes, so speed and stability decide: 3 threads stay ([RECOGNITION](RECOGNITION.md#thread-benchmark-100-visit-photos-2026-10-17)).
+
+## 2026-11-20: Sunlight, a self-test regression, new buttons
+
+- **Overexposure in sunlight.** Photos of the sunny hours had a median tray grey level of 220–240 and up to 80 % white pixels (about 70 in the evening): the exposure metered once in the dark stayed fixed. Fix: the exposure is corrected after every photo from the tray's brightness (2–3 ms), see [ALGORITHM](ALGORITHM.md#exposure-control-2026-11-20). Simulated and checked on the real camera in the dark; the real sun is still to be checked.
+- **Self-test regression found and fixed.** Since the threshold could be set from the dashboard (October) the self-test failed with a missing `accept_file`; the running detector was not affected, but a fresh install would have failed its own self-test. Found by running the self-test after the exposure change; it passes 6/6 again.
+- **Dashboard:** 🔁 Restart detector and 🔄 Reboot (home network only); the power-bank charge level cannot be read from the Pi, options in [POWER](POWER.md#power-bank-charge-level-in-the-dashboard-2026-11-20).

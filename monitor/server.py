@@ -12,7 +12,9 @@ access from the internet a password can be set (python monitor/server.py
 the login for a growing time (1 min, doubling, at most 1 h), kept in a file so
 the lock survives the server's idle exit.
 
-Two actions exist besides reading, both from the home network only: POST /api/accept sets the
+Actions exist besides reading, all from the home network only: POST /api/restart-detector restarts the
+detector service and POST /api/reboot reboots the Pi (token and a confirmation word required); POST
+/api/accept sets the
 recognition threshold in config/local.accept.json, which the detector reads at
 the start of every visit; and POST /api/poweroff (token and the word
 "poweroff" required) shuts the Pi down, for work on the hardware. It needs the
@@ -204,11 +206,26 @@ def accept_setting():
         return None
 
 
-def can_power_off():
-    # logind's answer for this user: "yes" only when the polkit rule allows it without a password.
+def can_do(method):
+    # logind's answer for this user ("CanPowerOff", "CanReboot"): "yes" only when the polkit rule
+    # allows it without a password.
     out = run(["busctl", "--system", "call", "org.freedesktop.login1", "/org/freedesktop/login1",
-               "org.freedesktop.login1.Manager", "CanPowerOff"])
+               "org.freedesktop.login1.Manager", method])
     return out.strip().partition(" ")[2].strip('"')
+
+
+def power_rights(server):
+    # Cached for a minute: the page asks every 3 s, and every answer costs a process.
+    if time.monotonic() - server.rights_at > 60:
+        server.rights = {name: can_do(name) == "yes" for name in ("CanPowerOff", "CanReboot")}
+        server.rights_at = time.monotonic()
+    return server.rights
+
+
+# POST action -> (confirmation word, logind method or None, command run two seconds after the answer)
+ACTIONS = {"/api/poweroff": ("poweroff", "CanPowerOff", "systemctl poweroff --no-ask-password"),
+           "/api/reboot": ("reboot", "CanReboot", "systemctl reboot --no-ask-password"),
+           "/api/restart-detector": ("restart", None, "systemctl --user restart crown-crows-detect")}
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -248,7 +265,7 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         self.server.last_request = time.monotonic()
         path = urlparse(self.path).path
-        if path not in ("/api/login", "/api/poweroff", "/api/accept"):
+        if path not in ("/api/login", "/api/accept", *ACTIONS):
             return self.fail(404, "not found")
         length = int(self.headers.get("Content-Length") or 0)
         if not 0 < length <= 1024:
@@ -270,18 +287,19 @@ class Handler(BaseHTTPRequestHandler):
             temporary.write_text(json.dumps({"accept": round(float(value), 2), "set_at": time.time()}) + "\n")
             temporary.replace(ACCEPT_FILE)  # atomic: the detector never reads half a file
             return self.send(200, json.dumps({"accept": round(float(value), 2)}).encode())
-        if path == "/api/poweroff":
+        if path in ACTIONS:
+            word, method, command = ACTIONS[path]
             if not self.server.token or not hmac.compare_digest(self.headers.get("X-Token", ""), self.server.token):
                 return self.fail(401, "token required")
-            if body.get("confirm") != "poweroff":
+            if body.get("confirm") != word:
                 return self.fail(400, "confirmation missing")
             if not self.from_home():
-                return self.fail(403, "power off works only from the home network")
-            if can_power_off() != "yes":
+                return self.fail(403, "this works only from the home network")
+            if method and not power_rights(self.server).get(method):
                 return self.fail(403, "not allowed: install the polkit rule (deploy/install.sh)")
-            # Answer first, then power off: the detector is stopped cleanly by systemd.
-            subprocess.Popen(["sh", "-c", "sleep 2; systemctl poweroff --no-ask-password"], start_new_session=True)
-            return self.send(202, json.dumps({"powering_off": True}).encode())
+            # Answer first, then act: systemd stops the detector cleanly.
+            subprocess.Popen(["sh", "-c", f"sleep 2; {command}"], start_new_session=True)
+            return self.send(202, json.dumps({"action": word}).encode())
         lock = json.loads(LOCK_FILE.read_text()) if LOCK_FILE.exists() else {"failures": 0, "until": 0}
         wait = lock["until"] - time.time()
         if wait > 0:
@@ -340,7 +358,9 @@ class Handler(BaseHTTPRequestHandler):
                     self.server.health_cache, self.server.health_at = health(), now
                 return self.send(200, json.dumps(self.server.health_cache).encode())
             if url.path == "/api/now":
-                return self.send(200, json.dumps(dict(now_reading(self.server), power_off_allowed=self.from_home(), from_home=self.from_home(), accept_setting=accept_setting())).encode())
+                return self.send(200, json.dumps(dict(now_reading(self.server), power_off_allowed=self.from_home() and power_rights(self.server)["CanPowerOff"],
+                                                                   reboot_allowed=self.from_home() and power_rights(self.server)["CanReboot"],
+                                                                   restart_allowed=self.from_home(), from_home=self.from_home(), accept_setting=accept_setting())).encode())
             if url.path == "/api/errors":
                 return self.send(200, json.dumps(errors()).encode())
             return self.fail(404, "not found")
@@ -379,6 +399,7 @@ def main():
         server = HTTPServer(("", int(sys.argv[1]) if len(sys.argv) > 1 else 8080), Handler)
     server.token, server.health_at, server.health_cache = token, 0.0, {}
     server.password = settings.get("password")
+    server.rights, server.rights_at = {"CanPowerOff": False, "CanReboot": False}, -1e9
     server.service_at, server.service_info = -1e9, {}
     server.last_request = time.monotonic()
     server.timeout = 5

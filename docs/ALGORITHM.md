@@ -8,7 +8,7 @@
 4. **Decision.** **YES** as soon as any photo reaches the threshold (`--accept` 0.6, or the value set in the dashboard, `config/local.accept.json`, read at the start of each visit): no further photos, reward stroke (`dump_reward`, counter-clockwise). **NO** if none of the five does: dump-only stroke (`dump_only`, clockwise). Either way the servo holds the end position for `--dump-seconds` (0.5 s) and returns straight to the centre, where it holds the tray until the next visit.
 5. **Record.** Each visit's photos are kept in `captures/<boot>-<sequence>-<pid>/` (the oldest are deleted beyond 1000 visits), and one line in `logs/detect.jsonl` records every photo's score and top label, the decision, the time from trigger to decision and the stroke.
 
-At start-up the servo moves to the centre, the light measures the exposure once (it then stays fixed, so each photo is taken immediately), and one photo of the empty tray is saved as `captures/<boot>-0000-<pid>/` so the aim and the tray area can be checked after every start. After a 60 s PIR warm-up the light flashes green three times: ready.
+At start-up the servo moves to the centre, the light measures the exposure once (the photos are then taken immediately, with a fixed exposure that is corrected after each photo, see "Exposure control"), and one photo of the empty tray is saved as `captures/<boot>-0000-<pid>/` so the aim and the tray area can be checked after every start. After a 60 s PIR warm-up the light flashes green three times: ready.
 
 ## Why it is built this way
 
@@ -29,8 +29,16 @@ At start-up the servo moves to the centre, the light measures the exposure once 
 | Step | Time |
 |---|---|
 | Trigger → first photo | 1 s |
-| Photo (fixed exposure, `--immediate`) | 0.45–0.7 s |
+| Photo (set exposure, `--immediate`) | 0.45–0.7 s; measuring the tray's brightness afterwards 2–3 ms |
 | Analysis of one photo | about 0.95 s (3 threads, in real visits) |
 | YES on photo 1 / photo 3 | about 2.6 s / up to 5 s after the trigger |
 | NO (all five photos) | about 6.5 s after the trigger |
 | Servo stroke out, 0.5 s hold, back | about 1.2 s |
+
+## Exposure control (2026-11-20)
+
+The exposure is metered once at start-up, in the dark with the box's light on (60 ms, gain about 5.4), and a fresh auto-exposure per photo would cost seconds. In daylight that fixed setting blew the pictures out: the visits of a sunny morning had a median tray grey level of 220–240 (of 255) and up to 80 % of the tray's pixels fully white, against about 70 in the evening, and a picture that clipped cannot be repaired afterwards.
+
+**Rule.** After every photo the grey level of the tray area is measured on every 8th pixel (median and share of white pixels, 2–3 ms). Inside 45–140 the exposure stays; otherwise the exposure for the next photo is corrected: from a clipped picture (over 20 % white) 6 times shorter, over 50 % white 16 times shorter, else by the (gamma 2.2) distance to a target grey level of 90, at most 8 times darker, 4 times brighter (16 times for a nearly black picture) per step. The gain stays at 1 while the shutter (100 µs to 60 ms) can do the job, to keep the noise low; the white balance gains stay as metered. The correction carries over to the next visit, so a steady light is right from the first photo; after a change the next one or two photos are corrected (a very bright sun: three). The evening exposure is not touched. `--fixed-exposure` switches the correction off.
+
+Simulated: ordinary sun in 2 photos, very bright sun in 3, a return to the dark in 3. Checked on the real camera in the dark: the loop leaves the evening setting alone and climbs from a nearly black start; the real sun has still to be checked. Each analysed photo's record keeps the exposure used and the tray's grey level and white share (`exposure` in `logs/detect.jsonl`); the dashboard shows them under each visit.

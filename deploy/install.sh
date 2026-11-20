@@ -79,8 +79,8 @@ else
 fi
 # The dashboard's "Power off" button: allow this user (only) to power off without a password.
 RULE=/etc/polkit-1/rules.d/50-crown-crows-poweroff.rules
-if [ -d /etc/polkit-1/rules.d ] && ! busctl --system call org.freedesktop.login1 /org/freedesktop/login1 \
-        org.freedesktop.login1.Manager CanPowerOff 2>/dev/null | grep -q '"yes"'; then
+can_do() { busctl --system call org.freedesktop.login1 /org/freedesktop/login1 org.freedesktop.login1.Manager "$1" 2>/dev/null | grep -q '"yes"'; }
+if [ -d /etc/polkit-1/rules.d ] && ! { can_do CanPowerOff && can_do CanReboot; }; then
     sed "s/USER_NAME/$USER/" deploy/50-crown-crows-poweroff.rules | sudo tee "$RULE" >/dev/null
 fi
 mkdir -p "$HOME/.config/systemd/user" logs captures config

@@ -122,3 +122,16 @@ Under 🔍 Last checks (both modes, home network only): a slider for the recogni
 The block exists only on the home network (as Power off): from the internet it is not shown at all, and the server refuses a change (403).
 
 Trade-off on the 126 reviewed visits of 2026-10-17 (84 caps, 9 accepted non-caps): 0.70 refuses 2 caps and still accepts 8 non-caps; 0.80: 4 caps refused, 6 non-caps accepted; 0.85: 11 / 5; 0.90: 14 / 5; 0.95: 17 / 1.
+
+## Reboot and Restart detector buttons (2026-11-20)
+
+Next to **⏻ Power off**, on the home network only (the same rule as the threshold):
+
+- **🔁 Restart detector** restarts the detector program (`crown-crows-detect`) without rebooting the Pi: for a stuck camera or to apply a changed setting. About 75 s until it is ready again; a visit in progress is cut off (the dashboard warns). Needs no extra permission.
+- **🔄 Reboot** reboots the Pi (about 2 minutes; the page reloads itself when the Pi is back). It needs the polkit rule to allow `reboot`: the button stays hidden until the rule on the Pi is updated (`deploy/50-crown-crows-poweroff.rules`, installed by `deploy/install.sh`; by hand: `sed "s/USER_NAME/$USER/" ~/crown-crows/deploy/50-crown-crows-poweroff.rules | sudo tee /etc/polkit-1/rules.d/50-crown-crows-poweroff.rules`). Power off hides in the same way when the rule is missing.
+
+All three are `POST` calls that need the token and a confirmation word; from the internet they are refused (403).
+
+## Exposure in the visit details
+
+Under each visit's photo table: the exposure used for each analysed photo and the tray's grey level, with a warning when part of the tray was fully white ([ALGORITHM](ALGORITHM.md#exposure-control-2026-11-20)).

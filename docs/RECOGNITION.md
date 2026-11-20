@@ -85,3 +85,11 @@ The same 100 photos from past visits (64 YES, 36 NO), each reduced to its tray a
 **Energy** is estimated, not measured (the Pi 3 has no current sensor): at about 0.5 W per busy core, one photo costs about 1.6 J on 4 threads, 1.3 J on 3, 1.2 J on 2 and 1.1 J on 1. Between 3 threads and 1 that is about 1 J per visit, about 0.03 Wh a day at 100 visits, against roughly 34 Wh a day for the idle Pi *(est.)*: about 0.1 %. The thread count does not matter for battery life.
 
 **Decision: 3 threads stay.** Four threads are the fastest on average but push the supply to its limit even without camera and light (13 % of photos flagged, one dip, uneven times; in real visits with camera and light about 2 s per photo). Three threads are only 0.16 s slower, steady, and without flags or dips. Two and one thread are slower and save practically nothing.
+
+## Can the recognition be improved? (2026-11-20)
+
+The mistakes left are mostly round or cylindrical objects seen end-on (a nail-polish bottle standing up, a round toothpick container, a night light, a roll of tape, a glass), scored 0.92–1.00, as high as real caps, so no threshold and no wording of the descriptions separates them. What would:
+
+1. **Exposure and focus** (done for exposure, see [ALGORITHM](ALGORITHM.md#exposure-control-2026-11-20); focus at the prototype): a clipped or soft picture cannot be recognised well, and real daylight is where this matters most.
+2. **A height limit at the intake** (mechanical, free): a slot about 25 mm high lets crown caps (6 mm), plastic caps and lids through and keeps out upright bottles and tall containers, the largest group of false YES.
+3. **A small classifier on the box's own photos** (training, postponed by the owner): worth trying only with weeks of real crow data, many different objects and a held-out test of unseen objects; with the dozen objects of the bench it would learn those objects, not "cap".
