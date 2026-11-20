@@ -119,3 +119,27 @@ On the Pi, the same 100 past visit photos with 4, 3, 2 and 1 recognition threads
 **Wasted or a mistake:** the white-balance correction (written, tested on 167 labelled visits, no effect on the recognition, deleted); a heavy experiment run on the box while it was on a power bank, followed by a wrong alarm about "power failures" that were the owner handling the cables; a fresh installation left waiting for a sudo password in a terminal nobody could type into (the detector was stopped for about 20 minutes).
 
 **The finding that was not about the code.** Recognition per photo, median by day: 0.98 s on 17 Oct, 1.61 s on 19 Nov, 1.58 s on 20 Nov before the changes, 1.82 s after. The times inside visits split into a fast mode (about 1.35 s) and a slow one (about 1.85 s), both before and after the changes, as a CPU does that is capped now and then; the Pi reports low voltage and a capped CPU at rest. The supply costs about 60 % of the speed; a NO takes about 9.5 s instead of 6.6 s. To be fixed on the supply side, then re-measured.
+
+## Unexpected hard resets (2026-11-19 to 2026-11-20): findings, cause open
+
+**What happened.** The box restarted by itself without being asked. Every stored boot of the system journal (kept since 17 Oct) was classified as a clean shutdown (the dashboard's Reboot leaves five shutdown records) or an abrupt end:
+
+| End of the run | Last line of the journal |
+|---|---|
+| 19 Nov 21:12 | "Undervoltage detected!" (91 dips before) |
+| 19 Nov 22:17 | cut off (46 dips before) |
+| 20 Nov 17:04 | "Undervoltage detected!" (178 dips before); the owner was handling the cables |
+| 20 Nov 17:10 | a finished YES visit; the owner was handling the cables |
+| 20 Nov 18:18 | a finished YES visit; unprompted |
+
+Five abrupt ends in about 21 hours, none in the stored boots of 17 Oct and none before the evening of 19 Nov, when the box was set up in its new arrangement (power bank fed from the mains).
+
+**Ruled out from the journal:** a software reboot (it leaves records); the hardware watchdog (the next boot began less than 20 s after the last record, the watchdog waits a minute); a crash, out-of-memory or hang (no trace); the SD card (the filesystem only ran its orphan cleanup, no errors); heat (29 °C); a scheduled restart. The detector, the dashboard and the day's changes cannot hard-reset the Pi.
+
+**What remains:** a sudden hard reset within seconds of a visit. In two of the five cases the last thing the Pi wrote was an undervoltage report. For about 19 hours until the owner re-cabled at 17:04 on 20 Nov the Pi's voltage flag at rest was clean; afterwards it showed low voltage continuously (`0x50005`) and the unprompted resets followed. The Pi measures the voltage at its own board, so this says nothing about the mains adapter or the power bank itself, only about what arrives at the Pi.
+
+**The owner's position:** the supply is stable (mains adapter → power bank → system) and the cause should be sought elsewhere. Nothing else was found in the data; no other cause is claimed. The cause is **open**.
+
+**To settle it** (on the [roadmap](ROADMAP.md)): (1) what exactly changed in the cabling at 17:04 on 20 Nov, and put it back; (2) run the box for a couple of hours from the adapter used on 17 Oct, without the power bank: with no resets and about 1 s per photo again the path through the bank was the cause, with resets continuing the search moves to the wiring and the mechanics (the servo's ground and wires, the sensor wires, static discharge); (3) optionally a dashboard note "unexpected restart" (the detector marks a clean stop, writes an abrupt one at the next start with the state of the power flags), not decided.
+
+**Lessons.** Two earlier resets had been read as a power failure when the owner was handling the cables (a false alarm); this time the classification of every stored boot, the timing against the watchdog and the last journal lines were checked first. The journal's tail can be lost in a power loss, so "the reset came right after the visit" is an upper bound, not a fact.

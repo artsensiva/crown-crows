@@ -94,6 +94,10 @@ The servo stays on the Pi's 5 V pin (owner's decision); a 2200 µF / 63 V electr
 
 Conclusions: four recognition threads together with camera and light drew more than the supply could hold, and the Pi slowed its CPU; three threads avoid that and decide faster. The servo still causes short dips on some tilts, on either side from test to test; with or without the capacitor the counts stay small and vary more between tests than between the two set-ups, so the capacitor showed no clear benefit and was removed (owner, 2026-10-17). **No crash, restart or failed stroke has come from any dip**, so the dashboard shows them as notes. Still to check: the power supply's rating and cable, and whether the tray meets resistance on the reward side.
 
+## Unexpected resets, 19-20 Nov 2026 (cause open)
+
+Five abrupt ends of the run in about 21 hours after the box was set up on a power bank fed from the mains, two of them ending with "Undervoltage detected!"; software, watchdog, crash and SD card ruled out; the owner considers the supply fine. Details, evidence and the tests that would settle it: [HISTORY](HISTORY.md#unexpected-hard-resets-2026-11-19-to-2026-11-20-findings-cause-open). The same low voltage at the Pi's board also slows the recognition (1.6 s per photo against 0.98 s on 17 Oct).
+
 ## Power bank: what to look for
 
 - **Output 5.1 V and at least 2.4–2.5 A** on the port that feeds the Pi, with a short, thick cable. The Pi 3 has already reported undervoltage with weaker power.
