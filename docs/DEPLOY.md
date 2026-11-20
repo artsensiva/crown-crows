@@ -45,6 +45,24 @@ Production settings live in `deploy/crown-crows-detect.service`: `--accept 0.6 -
    Expected: `RESULT: all scenarios correct`.
 8. **Offline test from a cold start**: [TESTING](TESTING.md).
 
+## Does a fresh installation behave like the bench unit? (checked 2026-11-20)
+
+**What a fresh installation brings, identical to the bench unit:** all code (a fresh clone of the repository was compared by checksum with the code running on the bench Pi: no difference), the three systemd units (identical to the installed ones), recognition on 3 threads, the adaptive exposure, the dashboard with all its controls, the polkit rule for Power off and Reboot, and the self-test. With only the packages of `deploy/requirements-runtime.txt` (versions as available on the setup computer) the fresh clone recognises the six self-test photos correctly with the same scores as on the Pi (1.000, 0.999, 1.000, 0.001, 0.003, 0.000), and the model's checksum matches `install.sh`.
+
+**What is per unit and is not carried by the repository** (set it on each new unit, or restore it from a backup of `config/`):
+
+| Setting | Where | Bench unit now |
+|---|---|---|
+| Servo positions | `config/local.servo.json` (calibration, step 6) | 1500 / 2500 / 605 µs |
+| Tray area | `config/local.tray.json` (step 6; the 📷 Live photo outlines it) | set for the old bench tray |
+| Recognition threshold | `config/local.accept.json`, set from the dashboard; without it the service's `--accept 0.6` | 0.85 |
+| Dashboard token and password | `config/local.monitor.json` (the token is created by `install.sh`; the password with `monitor/server.py --set-password`) | own values |
+| Food capacity and refill time, pause | `config/local.food.json`, `config/local.pause.json` | not set / not paused |
+| Camera focus, aiming, light | physical | adjusted by hand |
+| Access from the internet | Tailscale and Funnel, see [MONITOR](MONITOR.md#access-from-the-internet-password-tailscale-funnel) | set up |
+
+**Not run from scratch on the Pi yet:** the complete `bash deploy/setup_pi.sh <user>@<pi> --fresh` after the changes of 2026-11-20 (the October run passed 6/6). It needs the Pi's sudo password and loads the Pi for several minutes, so it waits for a stable supply (the supply was low at rest when this was checked). `install.sh` now also checks that the dashboard files and the polkit rule are present before it starts.
+
 ## Cloning an SD card (identical units)
 
 1. On the working Pi: `sudo poweroff`, wait until the green LED stops, unplug, take out the card.

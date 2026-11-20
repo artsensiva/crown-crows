@@ -20,7 +20,8 @@ step() { printf '\n== %s\n' "$1"; }
 
 step "1/8 Checking the project files in $ROOT"
 for file in detect.py servo_bench.py recognition.py selftest.py report.py lights.py \
-            deploy/crown-crows-detect.service deploy/requirements-runtime.txt "$MODEL"; do
+            monitor/server.py monitor/index.html deploy/crown-crows-monitor.service deploy/crown-crows-monitor.socket \
+            deploy/50-crown-crows-poweroff.rules deploy/crown-crows-detect.service deploy/requirements-runtime.txt "$MODEL"; do
     [ -f "$file" ] || { echo "Missing $file: copy the project first (docs/DEPLOY.md)"; exit 1; }
 done
 echo "$MODEL_SHA256  $MODEL" | sha256sum -c --quiet && echo "model checksum OK"

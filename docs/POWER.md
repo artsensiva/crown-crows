@@ -39,6 +39,23 @@ One minute while waiting for a crow, CPU time read from `/proc` on the Pi (no vi
 
 For reference: a 20 000 mAh power bank lasts about 1.5–1.7 days *(est.)*; weeks without recharging need night shutdown and a solar panel.
 
+## What the additions of 2026-11-20 cost
+
+Measured on the Pi (CPU time) and converted at about 0.5 W per busy core *(est.; no watt meter yet)*, against about 1.4 W and 34 Wh a day for the idle Pi *(est.)*:
+
+| Addition | Measured | Energy |
+|---|---|---|
+| The detector's loop now also checks two files (live-photo request, pause) ten times a second | 92 µs per pass = 0.09 % of one core | about 0.5 mW, 0.011 Wh a day |
+| Brightness measuring for the exposure after each photo | 2.4 ms per photo | about 1 mJ per photo, 0.0001 Wh a day at 100 visits |
+| 📷 Live photo (light on about 1.7 s, one photo, a small JPEG, the sharpness number) | 0.83 CPU-seconds per press | about 0.8 J per press; 20 presses a day 0.0045 Wh |
+| Dashboard open: `/api/now` now also reads three small files and the system's right to reboot (once a minute, 37 ms) | 12.7 ms per request against 12.2 ms before, plus 37 ms a minute: +0.07 % of one core | about 0.4 mW, only while a page is open |
+| Pause, Restart, Reboot, food counter, threshold | no work until pressed (the counter is computed in the browser) | none |
+| Exposure itself | a shorter shutter in daylight makes a photo about 0.1 s quicker (0.37 against 0.47 s) | slightly less |
+
+**Total: about 0.016 Wh a day, under 0.05 % of the daily budget**, far below what a USB power meter resolves (1–2 %); even if the 0.5 W per core were three times too low it stays below 0.2 %. The detector's own idle CPU measured 0.55 % of one core on 2026-11-20 against about 0.3 % on 2026-10-17: the loop checks explain 0.09 of the difference, the rest is the Pi's frequency scaling (it was running throttled at the time).
+
+For comparison, not an addition of today: Tailscale (access from the internet) uses 0.73 % of one core and keeps the Wi-Fi radio busy, more than all of the above together; recognition on 3 threads instead of 4 saves about 0.3 J per photo.
+
 ## Measures already in place (software)
 
 | Measure | Effect (measured on the Pi, 2026-10-14) |

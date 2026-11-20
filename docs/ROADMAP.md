@@ -16,6 +16,8 @@
 
 - [ ] **Power headroom** (a note, not a fault: no failure seen so far). The servo stays on the Pi's 5 V pin (owner's decision), without a capacitor (tested, no clear benefit, removed); short dips remain on some tilts. To check when convenient: the power supply's rating and cable, and whether the tray meets resistance on the reward side ([POWER](POWER.md#measurements-2026-10-17)).
 - [ ] **Energy for battery operation:** measure with a USB power meter first, then night shutdown, Wi-Fi/Tailscale off in the field, HDMI/Bluetooth off, possibly a Pi Zero 2 W ([POWER](POWER.md#measured-idle-load-2026-10-17)). Not needed while the box runs from the mains.
+- [ ] **Run `setup_pi.sh --fresh` on the bench Pi** once the supply is stable (needs the sudo password; the October run passed 6/6) and update the polkit rule so that 🔄 Reboot appears (`deploy/install.sh` does both).
+- [ ] **Supply low at rest** (2026-11-20, after re-cabling): check the cable, the port and other loads on the power bank.
 - [ ] **Check pause with a real hand at the tray** (2026-11-20): while paused no visit; after Resume a visit again.
 - [ ] **Check the adaptive exposure in real sun** (2026-11-20; under a strong lamp it worked: grey 254 → 71 after one correction): visits around midday; the dashboard shows each photo's exposure and grey level; the tray should come out near 90 instead of 220–240.
 - [ ] **Power bank charge level:** INA226 current sensor on I2C, energy used since the last charge, estimated percentage ([POWER](POWER.md#power-bank-charge-level-in-the-dashboard-2026-11-20)); waits for the owner's choice of sensor.

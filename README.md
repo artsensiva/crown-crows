@@ -8,7 +8,7 @@ A crow drops an object into a small intake. A camera looks at it, an on-device v
 
 > **Birds first.** An earlier version of this device was built around a kind of litter that, we later realised, could harm the birds carrying it. We had focused on the technology and underestimated the risk to the birds. That was a significant mistake. We withdrew the design and rebuilt the project around objects that are safe for crows: bottle caps and lids are not toxic and too large to swallow.
 
-> **Status (October 2026): bench prototype.** The detection loop, recognition, servo strokes, installer and self-test run on the Pi. Recognition of caps and lids was tuned on a grey tray (threshold 0.6) and checked on 141 bench visits; a monitoring dashboard runs on the local network and, optionally, from the internet. The mechanical housing, the food dispenser and outdoor trials are the next steps ([ROADMAP](docs/ROADMAP.md)).
+> **Status (October 2026): bench prototype.** The detection loop, recognition, servo strokes, installer and self-test run on the Pi. Recognition of caps and lids was tuned on a grey tray (threshold 0.6, adjustable from the dashboard) and checked on 141 bench visits; the camera adapts its exposure to daylight; a monitoring dashboard runs on the local network and, optionally, from the internet. The mechanical housing, the food dispenser and outdoor trials are the next steps ([ROADMAP](docs/ROADMAP.md)).
 
 ![The monitoring dashboard in Crow mode: what the box is doing, today's caps and snacks, the last guest, the three latest checks with photos, the recognition threshold and the box's health](docs/images/dashboard-crow.jpg)
 
@@ -91,7 +91,7 @@ Measured **on the Raspberry Pi 3**:
 | Model start-up | about 1.5 s, once; the model then stays in memory |
 | Servo stroke | 0.31–0.34 s per 85° movement; with the 0.5 s hold about 1.2 s |
 | Memory | about 170 MB for recognition (of the Pi's 905 MB) |
-| CPU while waiting for a crow | 0.2 % of one core |
+| CPU while waiting for a crow | 0.3–0.6 % of one core (detector); the whole Pi 0.5 % of its four cores |
 | Network use | none: the self-test blocks every network call |
 
 **Review of all 126 kept visits** (2026-10-17): 113 decisions right; every cap in view accepted; 9 round or dome-shaped non-caps (a night light, a tea-infuser ball, a roll of tape, a cup) accepted as caps. Their scores overlap those of real caps, so no threshold separates them; this is accepted as a known limit ([RECOGNITION](docs/RECOGNITION.md#review-of-all-kept-visits-2026-10-17-known-limit-accepted)).
@@ -183,11 +183,11 @@ The author's own unit is installed exactly this way. **Updating** later is one c
 
 ## Operating it
 
-The service starts by itself at boot and needs no network. On the local network, a **monitoring dashboard** shows visits, decisions, photos and device health on a phone or computer, in a friendly 🐦 Crow mode and a detailed 🤓 Nerd mode; it runs only while someone looks, can be protected by a password, and has a ⏻ Power off button for work on the hardware ([MONITOR](docs/MONITOR.md)).
+The service starts by itself at boot and needs no network. On the local network, a **monitoring dashboard** shows visits, decisions, photos and device health on a phone or computer, in a friendly 🐦 Crow mode and a detailed 🤓 Nerd mode; it runs only while someone looks and can be protected by a password. From the dashboard (also from the internet, behind the password) you can change the recognition threshold, pause the box, keep a food counter, take a live photo of the tray (aim, focus and light check), restart the detector and reboot the Pi; ⏻ Power off works only from the home network ([MONITOR](docs/MONITOR.md)).
 
 ![The last three checks with the full breakdown of each visit, and the threshold slider with a preview on the logged visits](docs/images/dashboard-checks.jpg)
 
-*Each check opens into a breakdown: why the decision was made, every photo's score and timing, the servo stroke and whether the power dipped. Below, the threshold slider (home network only) shows how the logged visits would have turned out.*
+*Each check opens into a breakdown: why the decision was made, every photo's score and timing, the servo stroke and whether the power dipped. Below, the threshold slider shows how the logged visits would have turned out.*
 
 Useful commands on the Pi:
 
@@ -199,7 +199,7 @@ cd ~/crown-crows && .venv-detector/bin/python -B selftest.py    # self-test (sto
 cd ~/crown-crows && python3 -B servo_bench.py --status          # servo state and calibration
 ```
 
-Production settings are in [`deploy/crown-crows-detect.service`](deploy/crown-crows-detect.service): `--accept 0.6 --servo full --dump-seconds 0.5 --ignore-seconds 25`; per-unit settings (servo positions, tray area, a threshold set from the dashboard on the home network) are in `config/`. The runtime needs four Python packages (onnxruntime, OpenCV headless, numpy, Pillow) plus the system's GPIO libraries. Visit photos are capped at the last 1000 visits (about 1.5 GB), logs rotate at 20 MB, the system log is capped at 50 MB.
+Production settings are in [`deploy/crown-crows-detect.service`](deploy/crown-crows-detect.service): `--accept 0.6 --servo full --dump-seconds 0.5 --ignore-seconds 25`; per-unit settings (servo positions, tray area, a threshold set from the dashboard, pause, food counter) are in `config/`. The runtime needs four Python packages (onnxruntime, OpenCV headless, numpy, Pillow) plus the system's GPIO libraries. Visit photos are capped at the last 1000 visits (about 1.5 GB), logs rotate at 20 MB, the system log is capped at 50 MB.
 
 ## Repository layout
 

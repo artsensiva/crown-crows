@@ -65,3 +65,11 @@ journalctl -k -b --no-pager | grep -i -E "voltage|error"                        
 - No "Undervoltage detected" and no crash during the test.
 
 Record the result, with the object list and the `report.py` output, in [HISTORY](HISTORY.md).
+
+## 7. Checks for the controls and the camera (2026-11-20)
+
+- **Exposure:** open the dashboard, press 📷 Live photo twice (the first photo after a change of light is not the one to judge). The tray's grey level should be 45–140 with under 5 % white pixels. Switch a strong lamp on, take two more photos: the second should be right again; switch it off and take two or three more. (Done on the bench: a strong lamp 254 → 71 after one correction; lamp off 2 → 33 → 44, the limit in a dim box.)
+- **Pause:** press ⏸ Pause the box, move a hand over the tray: no light, no visit, the status light blinks yellow now and then. Press ▶ Resume, move a hand again: a visit follows.
+- **Restart detector:** press 🔁 Restart detector: the dashboard shows the detector starting and ready again after about 75 s.
+- **Reboot / Power off:** 🔄 Reboot brings the page back by itself after about 2 minutes; ⏻ Power off (home network only) ends with the page saying the Pi is off.
+- **Food counter:** enter the capacity, press 🍽️ Refilled, give a few rewards: the number of portions left goes down by one for every YES with a stroke.
