@@ -96,7 +96,7 @@ Conclusions: four recognition threads together with camera and light drew more t
 
 ## Unexpected resets, 19-20 Nov 2026 (cause open)
 
-Five abrupt ends of the run in about 21 hours after the box was set up on a power bank fed from the mains, two of them ending with "Undervoltage detected!"; software, watchdog, crash and SD card ruled out; the owner considers the supply fine. Details, evidence and the tests that would settle it: [HISTORY](HISTORY.md#unexpected-hard-resets-2026-11-19-to-2026-11-20-findings-cause-open). The same low voltage at the Pi's board also slows the recognition (1.6 s per photo against 0.98 s on 17 Oct).
+Five abrupt ends of the run in about 21 hours after the box was set up on a power bank fed from the mains, two of them ending with "Undervoltage detected!"; software, watchdog, crash and SD card ruled out; the owner considers the supply fine. Details, evidence and the tests that would settle it: [HISTORY](HISTORY.md#unexpected-hard-resets-2026-11-19-to-2026-11-20-findings-cause-open). The low voltage at the Pi's board is the leading suspect for the slower recognition too (1.6 s per photo against 0.98 s on 17 Oct), not yet proven.
 
 ## Power bank: what to look for
 
