@@ -142,8 +142,16 @@ The whole interface is available from the internet (Tailscale Funnel) behind the
 
 ## 🛠️ Box controls
 
+![Box controls: pause, food counter and a live photo with the tray area outlined](images/dashboard-controls.jpg)
+
 A card under the threshold (both modes):
 
 - **⏸ Pause / ▶ Resume.** While paused, motion is ignored: a hand at the tray (cleaning, refilling) starts no visit, no light and no stroke; the servo keeps holding the tray. The status light blinks yellow for 50 ms every 10 s, the arm indicator shows *⏸ Paused*. Stored in `config/local.pause.json` (survives a restart); the detector checks it with one `stat()` per loop.
 - **🍽️ Food counter.** Set the dispenser's capacity in portions once (✏️ Capacity) and press 🍽️ Refilled after each refill: the card shows how many portions are left, counted from the reward strokes in the visit log since then (strokes, not food measured). At 15 % left a note appears, at zero a warning. Stored in `config/local.food.json`; the counting is done in the browser, so it costs nothing on the Pi.
 - **📷 Live photo.** The detector switches the light on for about a second, takes one photo with the current exposure (which also corrects it), and the page shows it (820 px, about 60 KB) with the tray area outlined in green and the numbers that matter for aiming and focusing: the tray's grey level (aim for 45–140), the share of white pixels, the **sharpness** (variance of the Laplacian over the tray area: compare the values while turning the lens, higher is sharper) and the exposure. The server only writes a request file in `/dev/shm`; the detector handles it between visits (a visit in progress delays it by up to about 10 s), so the camera and the lights have a single owner. On demand only: no energy between requests.
+
+## The health card
+
+![Short power dips are notes, not faults](images/dashboard-health.jpg)
+
+*Crow mode's health card on the bench box on 2026-11-20: the box works, and the three power notes (low at this moment, dips while photographing, dips on servo moves) are shown in grey and green, not as faults.*

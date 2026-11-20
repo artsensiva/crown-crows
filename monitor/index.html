@@ -25,7 +25,7 @@
   .food-line { font-weight: 600; } #foodBar { width: 160px; height: 10px; } #foodBar i { display: block; height: 100%; background: var(--ok); border-radius: 2px; }
   #foodBar[hidden] { display: none; }
   #foodBar.low i { background: var(--warn); } #foodBar.empty i { background: var(--bad); }
-  #snapBox img { max-width: 100%; border-radius: 10px; border: 1px solid var(--line); display: block; margin-bottom: 4px; }
+  #snapBox img { width: min(100%, 560px); border-radius: 10px; border: 1px solid var(--line); display: block; margin-bottom: 4px; }
   .strict-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
   .strict-row { display: flex; align-items: center; gap: 10px; margin: 8px 0 4px; }
   .strict-row input { flex: 1; min-width: 120px; } .strict-row output { font-weight: 700; font-size: 18px; min-width: 3em; text-align: center; }

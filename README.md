@@ -10,9 +10,9 @@ A crow drops an object into a small intake. A camera looks at it, an on-device v
 
 > **Status (October 2026): bench prototype.** The detection loop, recognition, servo strokes, installer and self-test run on the Pi. Recognition of caps and lids was tuned on a grey tray (threshold 0.6, adjustable from the dashboard) and checked on 141 bench visits; the camera adapts its exposure to daylight; a monitoring dashboard runs on the local network and, optionally, from the internet. The mechanical housing, the food dispenser and outdoor trials are the next steps ([ROADMAP](docs/ROADMAP.md)).
 
-![The monitoring dashboard in Crow mode: what the box is doing, today's caps and snacks, the last guest, the three latest checks with photos, the recognition threshold and the box's health](docs/images/dashboard-crow.jpg)
+![The monitoring dashboard in Crow mode: what the box is doing, today's caps and snacks, the last guest, the three latest checks with photos and the recognition threshold](docs/images/dashboard-crow.jpg)
 
-*The monitoring dashboard on the bench box ([MONITOR](docs/MONITOR.md)): live state, today's figures, the last three checks with their photos, the recognition threshold, and the box's health in plain words.*
+*The monitoring dashboard on the bench box ([MONITOR](docs/MONITOR.md)): live state, today's figures, the last three checks with their photos and the recognition threshold.*
 
 ---
 
@@ -123,6 +123,10 @@ On a sunny morning the exposure metered once in the dark stayed fixed: the tray 
 
 ![Tray brightness per visit before the fix](docs/images/chart-brightness.png)
 
+**Caught in a real visit:** the dashboard shows each photo's exposure and the tray's grey level. In the first visit after the lamp test, photo 1 was taken with the 10.2 ms left over from the lamp and came out almost black (grey level 6); photo 2 was taken with 60 ms and gain 5.4 and came out right (grey 79), and the YES was decided on it.
+
+![Last checks with the details of each visit open: the exposure and grey level of each photo](docs/images/dashboard-checks.jpg)
+
 ### 4. Recognition today
 
 ![Accepted caps, rejected objects, and the known mistakes](docs/images/recognition-examples.jpg)
@@ -138,6 +142,14 @@ The servo on the Pi's 5 V pin was blamed for the undervoltage warnings. Lining t
 *Then (17 Oct):* status, figures, three checks with photos. *Now:* the same plus the recognition threshold, box controls (pause, food counter, live photo), restart and reboot from anywhere behind the password, exposure and power diagnosis per visit; see the screenshots in [MONITOR](docs/MONITOR.md).
 
 ![The dashboard on 17 October](docs/images/dashboard-crow-17-oct.jpg)
+
+*Now (20 Nov):* the box controls (pause, food counter, live photo with the tray area outlined and a sharpness number for focusing), the health in plain words, and the phone view:
+
+![Box controls with a live photo](docs/images/dashboard-controls.jpg)
+
+![The health card: short power dips are shown as notes](docs/images/dashboard-health.jpg)
+
+<img src="docs/images/dashboard-phone.jpg" alt="The dashboard on a phone" width="300">
 
 ## Hardware
 

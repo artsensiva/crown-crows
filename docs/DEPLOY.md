@@ -61,7 +61,9 @@ Production settings live in `deploy/crown-crows-detect.service`: `--accept 0.6 -
 | Camera focus, aiming, light | physical | adjusted by hand |
 | Access from the internet | Tailscale and Funnel, see [MONITOR](MONITOR.md#access-from-the-internet-password-tailscale-funnel) | set up |
 
-**Not run from scratch on the Pi yet:** the complete `bash deploy/setup_pi.sh <user>@<pi> --fresh` after the changes of 2026-11-20 (the October run passed 6/6). It needs the Pi's sudo password and loads the Pi for several minutes, so it waits for a stable supply (the supply was low at rest when this was checked). `install.sh` now also checks that the dashboard files and the polkit rule are present before it starts.
+**Run from scratch on the bench Pi (2026-11-20):** `bash deploy/setup_pi.sh <user>@<pi> --fresh` cleared `~/crown-crows` on the Pi (kept `captures`, `config`, `logs`), copied the project and the model, checked the packages and the Python environment (onnxruntime 1.23.2, OpenCV 4.11.0), PWM, groups, the persistent log and the service; the self-test then passed **6/6 with the same scores as before** (1.000, 0.999, 1.000, 0.001, 0.003, 0.000), and the detector came up ready after about two minutes with the same settings as before: 3 recognition threads and, from `config/`, the threshold 0.85, the servo calibration, the tray area and the dashboard token and password. The one step that needs the Pi's sudo password, installing the polkit rule for Power off and Reboot, was skipped in that run (nobody could type the password); it is installed by the one command in [MONITOR](MONITOR.md#reboot-and-restart-detector-buttons-2026-11-20), or by running `install.sh` again from a real terminal.
+
+**Lesson:** run `setup_pi.sh` and `install.sh` from a real terminal that you can type into. When the permission rule is missing they ask once for the Pi's sudo password, and in a shell nobody can answer they wait indefinitely (the Pi's service is stopped meanwhile). `install.sh` also checks that the dashboard files and the polkit rule are present before it starts.
 
 ## Cloning an SD card (identical units)
 
