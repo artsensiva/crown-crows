@@ -21,6 +21,7 @@ A crow drops an object into a small intake. A camera looks at it, an on-device v
 - [How it works](#how-it-works)
 - [Status light](#status-light)
 - [Results](#results)
+- [How it got better: before and after](#how-it-got-better-before-and-after)
 - [Hardware](#hardware)
 - [Software](#software)
 - [Recognition without training](#recognition-without-training)
@@ -97,6 +98,46 @@ Measured **on the Raspberry Pi 3**:
 **Review of all 126 kept visits** (2026-10-17): 113 decisions right; every cap in view accepted; 9 round or dome-shaped non-caps (a night light, a tea-infuser ball, a roll of tape, a cup) accepted as caps. Their scores overlap those of real caps, so no threshold separates them; this is accepted as a known limit ([RECOGNITION](docs/RECOGNITION.md#review-of-all-kept-visits-2026-10-17-known-limit-accepted)).
 
 **Recognition of caps** (bench sessions, 2026-10-15; not a held-out benchmark): in good light drink caps scored a median **0.96**. The bench's round floor looked like a cap even when empty (up to 0.99); on a plain grey card, with descriptions only for things the box must reject, all 14 caps and 6 lids tested scored at least **0.81**, other objects at most **0.11** and the empty tray **0.00**, even in dim light ([RECOGNITION](docs/RECOGNITION.md)).
+
+## How it got better: before and after
+
+The pictures and numbers are from the bench box; each step links to its details in [HISTORY](docs/HISTORY.md).
+
+### 1. The tray: from a round tube to a grey tray (15 Oct)
+
+![Before: the floor of a round tube, whole photo analysed; after: a grey tray and a fixed analysed area](docs/images/tray-then-now.jpg)
+
+In the first bench session caps scored a median 0.96, but the **empty floor of the round tube scored up to 0.99 as a cap**, and large lids looked like caps too; in the first prototype a clearly visible object had scored 0.02 on a whole photo with other things in view and 0.99 on a crop of the tray. **Fix:** a plain grey, rectangular tray; only a fixed tray area is shown to the model (set once per unit); descriptions of things that stole votes from caps (coin, button, washer) removed; threshold 0.6. **Result:** the empty tray scores 0.001, all 14 caps and 6 lids of the grey-card sessions at least 0.81, other objects at most 0.11, self-test 6/6 ([RECOGNITION](docs/RECOGNITION.md)).
+
+### 2. Speed (14 Oct to 20 Nov)
+
+![Decision time by version: first prototype, whole tray, 512 px, four, two and three threads](docs/images/chart-decision-time.png)
+
+Model start-up fell from 90 s to 1.5 s (one ONNX file with the descriptions inside), a photo from 3.4 s to 0.5 s (exposure metered once instead of per photo), a NO from 10 s to 6.8 s (the tray area shrunk to 512 px before recognition). **A step backwards, then forward:** with four recognition threads the real visits took about 2 s per photo although the bench test promised 0.7 s: together with camera and light the power supply sagged and the Pi capped its CPU. Two threads fixed it (1.27 s), three threads are the best balance: **0.95 s per photo, a YES in 2.6 s, a NO in 6.5 s** ([benchmark](docs/RECOGNITION.md#thread-benchmark-100-visit-photos-2026-10-17)).
+
+### 3. Daylight (20 Nov)
+
+![Before: sunny-morning photos blown out by the exposure metered in the dark; after: the exposure follows the light](docs/images/daylight-before-after.jpg)
+
+On a sunny morning the exposure metered once in the dark stayed fixed: the tray came out at a grey level of 220-240 (of 255) with up to 80 % of its pixels fully white, against about 70 in the evening, and **a clipped picture cannot be repaired afterwards**. **Fix:** after every photo the brightness of the tray is measured (2-3 ms) and the exposure for the next photo corrected; the correction carries over to the next visit. Under a strong lamp the first photo came out at 254 with 58 % white, one correction brought it to 71 with 0.1 % white, and it stayed there. Real sun is still to be confirmed ([ALGORITHM](docs/ALGORITHM.md#exposure-control-2026-11-20)).
+
+![Tray brightness per visit before the fix](docs/images/chart-brightness.png)
+
+### 4. Recognition today
+
+![Accepted caps, rejected objects, and the known mistakes](docs/images/recognition-examples.jpg)
+
+Real caps and lids are accepted (a crown cap, plastic caps, jar lids, in any colour); paper, stones, leaves and lighters are rejected. The one mistake that remains is **round objects seen from above or end-on** (a night light, a tea infuser, a roll of tape, a cup, an upright bottle), scored 0.73-1.00, as high as real caps, so no threshold separates them; it is an accepted limit of a model without training, and a height limit at the intake would keep most of them out. The threshold can be set from the dashboard, with a preview of what it would have changed in the logged visits.
+
+### 5. Power: the first suspect was wrong
+
+The servo on the Pi's 5 V pin was blamed for the undervoltage warnings. Lining the kernel's dip reports up with the visits showed that with four recognition threads **every visit dipped while photographing and recognising, before the servo moved**; the servo's own counter had been counting flags left over from recognition. A capacitor at the servo was tested and removed (no clear benefit); three threads removed the recognition dips. No stroke or visit has ever failed because of a dip, so the dashboard shows them as notes ([POWER](docs/POWER.md#measurements-2026-10-17)).
+
+### 6. The dashboard (16 Oct to 20 Nov)
+
+*Then (17 Oct):* status, figures, three checks with photos. *Now:* the same plus the recognition threshold, box controls (pause, food counter, live photo), restart and reboot from anywhere behind the password, exposure and power diagnosis per visit; see the screenshots in [MONITOR](docs/MONITOR.md).
+
+![The dashboard on 17 October](docs/images/dashboard-crow-17-oct.jpg)
 
 ## Hardware
 
