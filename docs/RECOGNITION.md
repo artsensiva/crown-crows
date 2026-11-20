@@ -93,3 +93,17 @@ The mistakes left are mostly round or cylindrical objects seen end-on (a nail-po
 1. **Exposure and focus** (done for exposure, see [ALGORITHM](ALGORITHM.md#exposure-control-2026-11-20); focus at the prototype): a clipped or soft picture cannot be recognised well, and real daylight is where this matters most.
 2. **A height limit at the intake** (mechanical, free): a slot about 25 mm high lets crown caps (6 mm), plastic caps and lids through and keeps out upright bottles and tall containers, the largest group of false YES.
 3. **A small classifier on the box's own photos** (training, postponed by the owner): worth trying only with weeks of real crow data, many different objects and a held-out test of unseen objects; with the dozen objects of the bench it would learn those objects, not "cap".
+
+## Does the colour cast matter? (2026-11-20)
+
+Test of a white-balance correction before recognition: on the 167 labelled visits (99 with a cap, 68 without; 220 photos, cap visits judged on photo 1, the others on photos 1 and 3) every photo was recognised twice, as it is and with the colour cast of the tray neutralised (the tray's median red and blue scaled to its median green; for 215 of the 220 photos this moved the colours by more than 6 %, mostly the blue of the bench lamp). Same ONNX model, run on the setup computer.
+
+| Threshold | Caps refused, as is → neutralised | Non-caps accepted | Right of 167 |
+|---|---|---|---|
+| 0.60 | 3 → 3 | 19 → 21 | 145 → 143 |
+| 0.70 | 4 → 4 | 19 → 19 | 144 → 144 |
+| 0.80 | 6 → 10 | 17 → 16 | 144 → 141 |
+| 0.85 | 15 → 12 | 14 → 15 | 138 → 140 |
+| 0.90 | 18 → 19 | 11 → 11 | 138 → 137 |
+
+Mean score change −0.001 for caps and −0.002 for non-caps; AUC 0.9326 → 0.9304. The differences go both ways and are the size of the noise: **the model is insensitive to the colour cast, and neutralising it brings no measurable gain.** Exposure, which clips or darkens the picture, does matter; the white balance does not. The correction was therefore not enabled (the code is not in the detector; the owner decides).
