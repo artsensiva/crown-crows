@@ -1,6 +1,8 @@
 # White light upgrade
 
-Status (2026-10-14): planned; software ready (`--lights white`), hardware not yet built. Switch off and unplug all power before changing any wiring.
+Status (2026-11-20): **not built; the owner decided against the white LED strip.** The software is ready (`--lights white`) should it ever be wanted. Measured on 2026-11-20 with only the box's RGB light (lamp off): tray median R 5, G 50, B 118 of 255, so the "white" of the RGB module is strongly blue and dim; the camera therefore works at its longest exposure (60 ms) and a gain up to 8. The recognition does not mind the colour (a test of neutralising the cast changed nothing, see [RECOGNITION](RECOGNITION.md#does-the-colour-cast-matter-2026-11-20)); the dimness costs sharpness and some noise.
+
+Original status (2026-10-14): planned; software ready, hardware not yet built. Switch off and unplug all power before changing any wiring.
 
 ## Why
 

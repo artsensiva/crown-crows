@@ -158,7 +158,7 @@ The servo on the Pi's 5 V pin was blamed for the undervoltage warnings. Lining t
 | Raspberry Pi 3 Model B (1 GB) | Runs everything: sensors, camera, recognition, servo |
 | Raspberry Pi Camera Module V2 (IMX219) | Looks down at the tray |
 | PIR motion sensor HC-SR501 on GPIO17 | Wakes the system when a crow arrives; both potentiometers at minimum, jumper on H; a short tube narrows the zone ([HARDWARE](docs/HARDWARE.md#pir-settings-owner-2026-10-14)) |
-| RGB LED module on GPIO27/22/23 (white LED strip via MOSFET planned) | The intake is dark, so this is the only light the camera sees |
+| RGB LED module on GPIO27/22/23 (dim and blue; a white strip was considered and dropped, see [LIGHTING](docs/LIGHTING.md)) | The intake is dark, so this is the only light the camera sees |
 | JAMARA 033212 micro servo on GPIO18 (hardware PWM) | Tips the tray: centre 1500 µs, reward side 2500 µs, dump side 605 µs |
 | Power: USB supply today, a power bank for autonomy | The servo runs from the Pi's 5 V pin, without a capacitor (one was tested and showed no clear benefit); short dips occur but have caused no failure. A power-bank build should give the servo its own port ([POWER](docs/POWER.md)) |
 
@@ -281,7 +281,7 @@ crown-crows/
 - Recognition has been tested on one bench session, not a large held-out dataset; scores are not calibrated probabilities. The threshold is confirmed on the grey tray next.
 - The model does not tell a drink cap from a larger lid; the intake slot limits the size instead.
 - "Any one of five photos" gives more chances, so an object that briefly looks like a cap can earn a reward; an accepted trade-off.
-- The light is a weak RGB module; a white LED strip is planned ([LIGHTING](docs/LIGHTING.md)).
+- The light is a weak, bluish RGB module; the camera compensates with a long exposure and some gain ([LIGHTING](docs/LIGHTING.md)).
 - The servo is powered from the Pi, which reported undervoltage; it needs its own supply ([POWER](docs/POWER.md)).
 - No housing or food dispenser yet; the reference design is in [MECHANICS](docs/MECHANICS.md).
 - Version 2 should train crows step by step by itself ([ROADMAP](docs/ROADMAP.md)).
@@ -303,7 +303,7 @@ crown-crows/
 | [MECHANICS](docs/MECHANICS.md) | Housing design: layout, dimensions, tray and food mechanisms, sensors, materials, mounting, Berlin rules |
 | [HARDWARE](docs/HARDWARE.md) | Components, pin assignments, wiring, PIR settings |
 | [SERVO](docs/SERVO.md) | Servo power, hardware PWM, calibration |
-| [LIGHTING](docs/LIGHTING.md) | White light upgrade |
+| [LIGHTING](docs/LIGHTING.md) | The box's light, and a white-strip upgrade that was not built |
 | [POWER](docs/POWER.md) | Energy budget, power bank and solar, phone access |
 | [DEPLOY](docs/DEPLOY.md) | Installing, setting up and updating a unit |
 | [TESTING](docs/TESTING.md) | Test from a cold start without network |

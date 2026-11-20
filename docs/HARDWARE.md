@@ -10,7 +10,7 @@
 | Standard 15-pin CSI ribbon | 1 | Pi 3B to camera |
 | PIR HC-SR501 (identified from the board, 2026-10-14) | 1 | Settings: see "PIR settings" below |
 | JAMARA High End Micro 033212 servo | 1 | 4.8–6 V; manufacturer max 600–750 mA; calibrated 605 / 1500 / 2500 µs ([SERVO](SERVO.md)) |
-| RGB LED module (common anode) | 1 | Camera light and status light on GPIO27/22/23; a brighter white light is planned ([LIGHTING](LIGHTING.md)) |
+| RGB LED module (common anode) | 1 | Camera light and status light on GPIO27/22/23; a brighter white light was considered and dropped ([LIGHTING](LIGHTING.md)) |
 | Pi supply | 1 | Target: quality 5–5.1 V, 2.5 A micro-USB supply and sound short cable |
 | Separate servo supply | 1 | Match servo specification, including startup/stall demand |
 | Jumper wires or a soldered board | Set | Secure connections without exposed short-circuit hazards |
