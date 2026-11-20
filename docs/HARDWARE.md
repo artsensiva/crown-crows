@@ -95,8 +95,8 @@ Initially test without horn or load, within a limited documented pulse range. Ca
 The current module is a common-anode IDUINO RGB with three onboard 330-ohm
 resistors visible in the photo. The additional external 220 ohms per channel
 were removed on 2026-10-14 to brighten the light. The bare-LED example below
-is background, not the current wiring. A brighter white light is planned
-([LIGHTING](LIGHTING.md)).
+is background, not the current wiring. A brighter white light was considered
+and dropped ([LIGHTING](LIGHTING.md)).
 
 A bare low-power LED requires a series resistor. `220R 5%` means 220 ohms ±5%, not its power rating. Calculate `R = (3.3 V − Vf) / I` using the LED specification and GPIO current limits.
 
