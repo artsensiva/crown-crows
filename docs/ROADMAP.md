@@ -17,9 +17,13 @@
 - [ ] **Power headroom** (a note, not a fault: no failure seen so far). The servo stays on the Pi's 5 V pin (owner's decision), without a capacitor (tested, no clear benefit, removed); short dips remain on some tilts. To check when convenient: the power supply's rating and cable, and whether the tray meets resistance on the reward side ([POWER](POWER.md#measurements-2026-10-17)).
 - [ ] **Energy for battery operation:** measure with a USB power meter first, then night shutdown, Wi-Fi/Tailscale off in the field, HDMI/Bluetooth off, possibly a Pi Zero 2 W ([POWER](POWER.md#measured-idle-load-2026-10-17)). Not needed while the box runs from the mains.
 - [x] **`setup_pi.sh --fresh` run on the bench Pi** (2026-11-20): self-test 6/6, same behaviour as before ([DEPLOY](DEPLOY.md#does-a-fresh-installation-behave-like-the-bench-unit-checked-2026-11-20)).
-- [ ] **Install the polkit rule** so that 🔄 Reboot appears: one command with the Pi's sudo password ([MONITOR](MONITOR.md#reboot-and-restart-detector-buttons-2026-11-20)).
-- [ ] **Supply low at rest** (2026-11-20, after re-cabling): check the cable, the port and other loads on the power bank.
-- [ ] **Check pause with a real hand at the tray** (2026-11-20): while paused no visit; after Resume a visit again.
+- [x] **Polkit rule installed** by the owner (2026-11-20): 🔄 Reboot works, the Pi came back by itself in 3 minutes after a clean shutdown.
+- [ ] **Speed regression from the supply (found 2026-11-20, not caused by the code):** recognition per photo took 0.98 s on 17 Oct and 1.6 s on 19-20 Nov, before and after the day's changes; the Pi reports low voltage and a capped CPU at rest. Check the cable, the port, other loads, and whether unplugging the charger from the power bank (no charging while discharging) clears the flag; then re-measure (the target is about 1 s per photo, a NO in about 6.5 s, as on 17 Oct).
+- [ ] **Built on 2026-11-20 but not yet proven in use** (to be ticked off one by one):
+  - Pause with a real hand at the tray: while paused no visit and no stroke; after Resume a visit again.
+  - Food counter: enter the real capacity, refill, check that the number goes down with the rewards and that the note appears at 15 %.
+  - Controls from the internet through the Tailscale address (threshold, Restart, Reboot, Pause, Live photo behind the password; Power off disabled there).
+  - Live photo used for the new box: tray area and focus set by its outline and sharpness number.
 - [ ] **Check the adaptive exposure in real sun** (2026-11-20; under a strong lamp it worked: grey 254 → 71 after one correction): visits around midday; the dashboard shows each photo's exposure and grey level; the tray should come out near 90 instead of 220–240.
 - [ ] **Power bank charge level:** INA226 current sensor on I2C, energy used since the last charge, estimated percentage ([POWER](POWER.md#power-bank-charge-level-in-the-dashboard-2026-11-20)); waits for the owner's choice of sensor.
 - [ ] **Intake height limit (about 25 mm)** against upright cylinders and tall objects, the largest group of false YES ([RECOGNITION](RECOGNITION.md#can-the-recognition-be-improved-2026-11-20)).

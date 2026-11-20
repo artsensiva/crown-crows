@@ -99,3 +99,23 @@ On the Pi, the same 100 past visit photos with 4, 3, 2 and 1 recognition threads
 - **Whole interface from the internet (owner's decision):** threshold, Restart detector and Reboot work behind the password; Power off stays home-only (shown, disabled). New: ⏸ pause, 🍽️ food counter, 📷 live photo with a sharpness number ([MONITOR](MONITOR.md#box-controls)).
 - **Verification of a fresh installation and energy cost (owner's request):** a fresh clone is byte-identical with the code on the bench Pi, the units match, the recognition of the six self-test photos from the clone gives the Pi's scores; the additions of the day cost under 0.05 % of the daily energy ([DEPLOY](DEPLOY.md#does-a-fresh-installation-behave-like-the-bench-unit-checked-2026-11-20), [POWER](POWER.md#what-the-additions-of-2026-11-20-cost)). Found on the way: the supply was low at rest (alarm on for minutes, CPU throttled) after the box was re-cabled; two resets that evening were the owner handling the power cables. A colour-cast correction was tested and dropped ([RECOGNITION](RECOGNITION.md#does-the-colour-cast-matter-2026-11-20)).
 - **Installation from scratch verified on the bench Pi** (owner's request): self-test 6/6, same scores, same settings afterwards; the permission step waited for a password nobody could type, which stopped the detector for about 20 minutes until the remaining steps were run without it ([DEPLOY](DEPLOY.md#does-a-fresh-installation-behave-like-the-bench-unit-checked-2026-11-20)). README: a new before-and-after section with pictures, and fresh screenshots of the dashboard.
+
+## 2026-11-20: Assessment of the day's session (accepted by the owner as a good result)
+
+**Verdict.** The day's code made nothing worse and improved one condition (bright light); the improvement is shown under a strong lamp, not yet in real sun. A bigger problem found on the way is not caused by the code: the box is slower than on 17 Oct because of the power supply.
+
+| Measure | Before | After |
+|---|---|---|
+| Tray brightness in the sunny hours (12 visits) | 0 of 12 in range (45-140); 10 of 12 with 5 % or more white pixels; grey 218-242 | strong lamp: 254 → 71 after one correction; a real visit: 6 → 79 |
+| Photos in range in ordinary light | 72 % (121 of 168) | 73 % (11 of 15): unchanged |
+| Decision time (YES / NO, median) | 2.98 s / 9.44 s | 4.0 s / 10.8 s (10 visits): the supply, see below |
+| Self-test | failed since October | 6 of 6 |
+| Energy | | +0.016 Wh a day, under 0.05 % |
+
+**Effective:** the adaptive exposure (the cost: one extra photo after an abrupt change of light, about 3 s in the one visit that showed it); the self-test fix, found by running it; Restart and Reboot (Reboot proven by the owner); the live photo (tray area and sharpness for aiming); the check of a fresh installation (code identical by checksum, self-test 6/6, same settings); the measurement of the energy cost.
+
+**Built, not yet proven in use** (on the [roadmap](ROADMAP.md)): pause with a real hand, the food counter, the controls from the internet, the live photo for the new box. Remote control of the threshold, restart and reboot enlarges what the password protects.
+
+**Wasted or a mistake:** the white-balance correction (written, tested on 167 labelled visits, no effect on the recognition, deleted); a heavy experiment run on the box while it was on a power bank, followed by a wrong alarm about "power failures" that were the owner handling the cables; a fresh installation left waiting for a sudo password in a terminal nobody could type into (the detector was stopped for about 20 minutes).
+
+**The finding that was not about the code.** Recognition per photo, median by day: 0.98 s on 17 Oct, 1.61 s on 19 Nov, 1.58 s on 20 Nov before the changes, 1.82 s after. The times inside visits split into a fast mode (about 1.35 s) and a slow one (about 1.85 s), both before and after the changes, as a CPU does that is capped now and then; the Pi reports low voltage and a capped CPU at rest. The supply costs about 60 % of the speed; a NO takes about 9.5 s instead of 6.6 s. To be fixed on the supply side, then re-measured.
