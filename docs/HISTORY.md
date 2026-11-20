@@ -143,3 +143,20 @@ Five abrupt ends in about 21 hours, none in the stored boots of 17 Oct and none 
 **To settle it** (on the [roadmap](ROADMAP.md)): (1) what exactly changed in the cabling at 17:04 on 20 Nov, and put it back; (2) run the box for a couple of hours from the adapter used on 17 Oct, without the power bank: with no resets and about 1 s per photo again the path through the bank was the cause, with resets continuing the search moves to the wiring and the mechanics (the servo's ground and wires, the sensor wires, static discharge); (3) optionally a dashboard note "unexpected restart" (the detector marks a clean stop, writes an abrupt one at the next start with the state of the power flags), not decided.
 
 **Lessons.** Two earlier resets had been read as a power failure when the owner was handling the cables (a false alarm); this time the classification of every stored boot, the timing against the watchdog and the last journal lines were checked first. The journal's tail can be lost in a power loss, so "the reset came right after the visit" is an upper bound, not a fact.
+
+### How well each claim of 20 Nov is supported (self-assessment)
+
+| Claim | Evidence | Status |
+|---|---|---|
+| The adaptive exposure fixes blown-out pictures | real camera under a strong lamp (254 → 71), one real visit (6 → 79), simulation; no real sun yet | confirmed for the mechanism, sun open |
+| The self-test was broken since October and is fixed | the error reproduced, 6/6 after the fix | confirmed |
+| Restart, Reboot, live photo work | exercised on the Pi (Reboot by the owner) | confirmed |
+| Pause, food counter, controls through the Tailscale address | pause seen in the log only; the others not used; the internet path tested only as a request coming through the proxy | unproven |
+| A fresh installation behaves like the bench unit | code identical by checksum, self-test 6/6, same settings; the sudo step ran separately, so the whole in one piece was not seen | confirmed in parts |
+| The day's additions cost under 0.05 % energy | measured CPU time, assumed 0.5 W per core, no watt meter | estimate (the order of magnitude is safe) |
+| Colour cast does not matter, the correction was dropped | 167 labelled visits, AUC 0.9326 against 0.9304; the correction was simulated on saved photos, not applied in the camera | confirmed, approximately |
+| The box's light is blue, not white | one live photo (R 5, G 50, B 118) and the 14 Oct measurement | confirmed |
+| The Pi cannot report the power bank's charge | no USB, I2C or power-supply entry on the Pi | confirmed |
+| Round objects seen from above are accepted and no threshold separates them | scores of 14 such objects against 99 caps overlap | confirmed |
+| The box is slower than on 17 Oct because of the supply | the slowdown is real (0.98 s → 1.6 s per photo, before the day's code); the cause is a flag at rest and a bimodal timing, not a measured clock | **hypothesis** |
+| The abrupt restarts are brown-outs | no software trace, two last lines "Undervoltage detected!", onset after the re-cabling; the voltage itself never measured | **probable, not proven; the owner disagrees** |
