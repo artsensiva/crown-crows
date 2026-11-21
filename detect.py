@@ -72,10 +72,7 @@ def is_paused(path, cache):
 
 def tray_brightness(frame, tray, cv2, numpy):
     # Median grey level and share of fully white pixels of the tray area, on every 8th pixel.
-    height, width = frame.shape[:2]
-    left, top, right, bottom = tray
-    crop = frame[int(top * height):int(bottom * height):8, int(left * width):int(right * width):8]
-    grey = cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY)
+    grey = cv2.cvtColor(region(frame, tray)[::8, ::8], cv2.COLOR_BGR2GRAY)
     return float(numpy.median(grey)), float((grey >= 250).mean())
 
 
@@ -223,84 +220,49 @@ def current_accept(options):
     # The threshold can be changed from the dashboard (config/local.accept.json, written by
     # monitor/server.py); it is read at the start of every visit. Without the file, or with an
     # invalid value, --accept applies.
-    path = getattr(options, "accept_file", None)
-    if path is None:
-        return options.accept
     try:
-        value = float(json.loads(path.read_text())["accept"])
+        value = float(json.loads(options.accept_file.read_text())["accept"])
         return value if 0.3 <= value <= 0.99 else options.accept
     except (OSError, ValueError, KeyError, TypeError):
         return options.accept
 
 
 def visit(events, boot, triggered, lights, capture, classify, journal, options, stop, servo):
-    # Owner's logic (2026-10-14): after the trigger wait --first-delay, then
-    # with the light on take --photos photos --photo-interval apart. Each
-    # photo is analysed in a background thread as soon as it exists; the first
-    # photo at or above --accept means YES at once (no further photos), and
-    # the servo makes the reward stroke. If no photo reaches it: NO, dump-only
-    # stroke.
-    import queue
-    import threading
-
+    # Owner's logic (2026-10-14): after the trigger wait --first-delay, then with the light on take up to
+    # --photos photos, each one analysed before the next is taken (camera and recognition never compete
+    # for the Pi's CPU and supply). The first photo at or above the threshold means YES at once, and the
+    # servo makes the reward stroke; if no photo reaches it: NO, dump-only stroke.
     batch = options.output / f"{boot}-{events:04d}-{os.getpid()}"
     batch.mkdir(parents=True)
     results = []
-    shots = {}  # photo number -> exposure used and the tray's brightness (when capture reports it)
     accept = current_accept(options)
-    yes = threading.Event()
-    jobs = queue.Queue()
-
-    def analyse():
-        while True:
-            item = jobs.get()
-            if item is None:
-                return
-            index, frame = item
-            if yes.is_set():
-                continue
+    stop.wait(options.first_delay)
+    lights.on()
+    try:
+        for index in range(1, options.photos + 1):
+            if stop.is_set():
+                break
+            frame, path, exposure = capture(index)
+            shutil.copyfile(path, batch / f"image-{index:02d}.jpg")
             started = time.monotonic()
             score, top = classify(frame)
             finished = time.monotonic()
             results.append({"photo": index, "cap_score": round(score, 4), "top_label": top,
                             "analysis_seconds": round(finished - started, 3),
-                            "seconds_after_trigger": round(finished - triggered, 3)})
+                            "seconds_after_trigger": round(finished - triggered, 3), "exposure": exposure})
             if score >= accept:
-                yes.set()
-
-    worker = threading.Thread(target=analyse, daemon=True)
-    worker.start()
-    taken = 0
-    stop.wait(options.first_delay)
-    lights.on()
-    try:
-        for index in range(1, options.photos + 1):
-            slot = triggered + options.first_delay + (index - 1) * options.photo_interval
-            while not yes.is_set() and not stop.is_set() and time.monotonic() < slot:
-                stop.wait(.01)
-            if yes.is_set() or stop.is_set():
                 break
-            frame, path, *info = capture(index)
-            if info and info[0]:
-                shots[index] = info[0]
-            shutil.copyfile(path, batch / f"image-{index:02d}.jpg")
-            taken += 1
-            jobs.put((index, frame))
     finally:
         lights.off()
-        jobs.put(None)
-    while worker.is_alive() and not yes.is_set():
-        worker.join(.01)
     decided = time.monotonic()
-    decision = "YES" if yes.is_set() else "NO"
+    decision = "YES" if results and results[-1]["cap_score"] >= accept else "NO"
     record = {
         "boot": boot,
         "sequence": events,
         "wall_clock_unreliable": datetime.now(timezone.utc).isoformat(),
         "batch": batch.name,
-        "photos_taken": taken,
-        "photos": [dict(result, **({"exposure": shots[result["photo"]]} if result["photo"] in shots else {}))
-                   for result in sorted(results, key=lambda result: result["photo"])],
+        "photos_taken": len(results),
+        "photos": results,
         "accept": accept,
         "decision": decision,
         "trigger_to_decision_seconds": round(decided - triggered, 3),
@@ -311,7 +273,7 @@ def visit(events, boot, triggered, lights, capture, classify, journal, options, 
         stroke = "dump_reward" if decision == "YES" else "dump_only"
         try:
             servo.dump(stroke, options.dump_seconds, stop=stop)
-            if getattr(options, "servo_idle", "hold") == "release":
+            if options.servo_idle == "release":
                 servo.release()
             record["servo"] = {"stroke": stroke, "outcome": "DONE"}
         except Exception as error:
@@ -323,7 +285,7 @@ def visit(events, boot, triggered, lights, capture, classify, journal, options, 
     journal.flush()
     best = max(results, key=lambda result: result["cap_score"], default=None)
     LOG.info("Event %d: %s after %d photo(s) in %.2f s from trigger (best cap_score %s, photo %s)%s", events,
-             decision, taken, record["trigger_to_decision_seconds"],
+             decision, len(results), record["trigger_to_decision_seconds"],
              f"{best['cap_score']:.3f}" if best else "-", best["photo"] if best else "-",
              f"; servo {record['servo']['stroke']} {record['servo']['outcome']}" if "servo" in record else "; servo off")
     prune(options.output, options.keep_batches)
@@ -334,45 +296,31 @@ def monitor(sensor, lights, recognise, cv2, journal, options, stop, servo=None):
     # The Pi has no real-time clock and runs offline, so batches are named by
     # boot and sequence number; wall-clock time is recorded but unreliable.
     boot = Path("/proc/sys/kernel/random/boot_id").read_text().strip()[:8]
-    frames = [Path(f"/dev/shm/crown-crows-frame-{os.getpid()}-{index}.jpg") for index in (0, 1)]
-    counter = [0]
+    photo = Path(f"/dev/shm/crown-crows-photo-{os.getpid()}.jpg")  # RAM; only analysed photos are copied to the card
     camera = {}
 
-    def take_frame():
-        # Frames go to RAM (/dev/shm); only analysed frames are kept on the card.
-        path = frames[counter[0] % 2]
-        counter[0] += 1
+    def shoot():
         subprocess.run(["rpicam-still", "--nopreview", *camera["args"], "--width", "1640", "--height", "1232",
-                        "--output", str(path)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                        "--output", str(photo)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                        check=True, timeout=options.camera_timeout)
-        frame = cv2.imread(str(path))
+        frame = cv2.imread(str(photo))
         if frame is None:
             raise RuntimeError("Camera produced no readable image")
-        return frame, path
+        return frame
 
     def capture(index):
-        # Visit photos get their own RAM files, because they are analysed in
-        # a background thread while the next photo is being taken.
-        path = Path(f"/dev/shm/crown-crows-photo-{os.getpid()}-{index}.jpg")
-        frames.append(path)
+        # A photo with the current exposure, then the correction for the next one (see tray_brightness).
+        import numpy
         used = camera["exposure"]
-        subprocess.run(["rpicam-still", "--nopreview", *camera["args"], "--width", "1640", "--height", "1232",
-                        "--output", str(path)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                       check=True, timeout=options.camera_timeout)
-        frame = cv2.imread(str(path))
-        if frame is None:
-            raise RuntimeError("Camera produced no readable image")
-        if not options.fixed_exposure:
-            import numpy
-            median, saturated = tray_brightness(frame, options.tray, cv2, numpy)
-            info = {"shutter_us": used["shutter_us"], "gain": used["gain"], "luma": round(median), "white": round(saturated, 3)}
-            new = adapted_exposure(used, median, saturated)
-            if (new["shutter_us"], new["gain"]) != (used["shutter_us"], used["gain"]):
-                camera["exposure"], camera["args"] = new, camera_arguments(new)
-                LOG.info("Exposure adapted: tray grey level %.0f, %.0f %% white: shutter %d us, gain %.2f -> %d us, %.2f",
-                         median, saturated * 100, used["shutter_us"], used["gain"], new["shutter_us"], new["gain"])
-            return frame, path, info
-        return frame, path
+        frame = shoot()
+        median, saturated = tray_brightness(frame, options.tray, cv2, numpy)
+        info = {"shutter_us": used["shutter_us"], "gain": used["gain"], "luma": round(median), "white": round(saturated, 3)}
+        new = adapted_exposure(used, median, saturated)
+        if (new["shutter_us"], new["gain"]) != (used["shutter_us"], used["gain"]):
+            camera["exposure"], camera["args"] = new, camera_arguments(new)
+            LOG.info("Exposure adapted: tray grey level %.0f, %.0f %% white: shutter %d us, gain %.2f -> %d us, %.2f",
+                     median, saturated * 100, used["shutter_us"], used["gain"], new["shutter_us"], new["gain"])
+        return frame, photo, info
 
     def remeter(timeout_ms=None):
         camera["exposure"], camera["args"] = meter(options, timeout_ms or options.remeter_ms)
@@ -382,24 +330,18 @@ def monitor(sensor, lights, recognise, cv2, journal, options, stop, servo=None):
         # A live photo on request: light on for about a second, one photo with the current exposure (which
         # also corrects it), a small copy with the tray area outlined, and the numbers worth seeing when
         # aiming, focusing or checking the light: grey level, white share, sharpness.
-        import numpy
         SNAPSHOT_REQUEST.unlink(missing_ok=True)
         info = {"taken_at": time.time()}
         try:
             lights.on()
             try:
-                frame, _path, *used = capture(0)
+                frame, _path, used = capture(0)
             finally:
                 lights.off()
-            height, width = frame.shape[:2]
-            left, top, right, bottom = options.tray
-            grey = cv2.cvtColor(frame[int(top * height):int(bottom * height), int(left * width):int(right * width)], cv2.COLOR_BGR2GRAY)
-            median, white = tray_brightness(frame, options.tray, cv2, numpy)
-            info.update({"luma": round(median), "white": round(white, 3),
-                         "sharpness": round(float(cv2.Laplacian(grey, cv2.CV_32F).var()), 1),
-                         "shutter_us": (used[0] or {}).get("shutter_us") if used else camera["exposure"]["shutter_us"],
-                         "gain": (used[0] or {}).get("gain") if used else camera["exposure"]["gain"]})
+            grey = cv2.cvtColor(region(frame, options.tray), cv2.COLOR_BGR2GRAY)
+            info.update(used, sharpness=round(float(cv2.Laplacian(grey, cv2.CV_32F).var()), 1))
             small = cv2.resize(frame, (820, 616), interpolation=cv2.INTER_AREA)
+            left, top, right, bottom = options.tray
             cv2.rectangle(small, (int(left * 820), int(top * 616)), (int(right * 820), int(bottom * 616)), (0, 255, 0), 2)
             temporary = SNAPSHOT_IMAGE.with_suffix(".tmp.jpg")
             cv2.imwrite(str(temporary), small, [cv2.IMWRITE_JPEG_QUALITY, 80])
@@ -424,10 +366,10 @@ def monitor(sensor, lights, recognise, cv2, journal, options, stop, servo=None):
         lights.on()
         try:
             remeter(2000)
-            frame, path = take_frame()
+            frame = shoot()
             startup = options.output / f"{boot}-0000-{os.getpid()}"
             startup.mkdir(parents=True)
-            shutil.copyfile(path, startup / "image-01.jpg")
+            shutil.copyfile(photo, startup / "image-01.jpg")
             score, top = classify(frame)
             LOG.info("Start-up tray: cap_score %.3f (top %s), tray area %s", score, top, options.tray)
         finally:
@@ -480,8 +422,7 @@ def monitor(sensor, lights, recognise, cv2, journal, options, stop, servo=None):
             stop.wait(options.poll_seconds)
         LOG.info("Stopped after %d motion event(s)", events)
     finally:
-        for path in frames:
-            path.unlink(missing_ok=True)
+        photo.unlink(missing_ok=True)
 
 
 def parse_options():
@@ -507,14 +448,11 @@ def parse_options():
     parser.add_argument("--run-seconds", type=float, default=0, help="0 runs without a time limit")
     parser.add_argument("--warmup", type=float, default=60, help="PIR warm-up after start")
     parser.add_argument("--remeter-ms", type=int, default=1000, help="Auto-exposure time when metering")
-    parser.add_argument("--fixed-exposure", action="store_true",
-                        help="Keep the exposure metered at start-up (no correction from the tray's brightness)")
     parser.add_argument("--keep-batches", type=int, default=1000, help="Delete the oldest visit photo folders beyond this many")
     parser.add_argument("--camera-timeout", type=float, default=20)
     parser.add_argument("--lights", choices=sorted(LIGHTS), default="rgb", help="Light hardware; see docs/LIGHTING.md")
-    parser.add_argument("--photos", type=int, default=5, help="Photos per visit")
+    parser.add_argument("--photos", type=int, default=3, help="Photos per visit at most (on 167 labelled visits photos 4 and 5 never changed a decision)")
     parser.add_argument("--first-delay", type=float, default=1.0, help="Seconds from the trigger to the first photo")
-    parser.add_argument("--photo-interval", type=float, default=1.0, help="Seconds between photos")
     parser.add_argument("--ignore-seconds", type=float, default=25.0, help="Triggers are ignored this long after a trigger")
     parser.add_argument("--servo", choices=("off", "dump", "full"), default="off",
                         help="off: no strokes; dump: dump-only stroke after every visit; full: reward stroke for YES")
@@ -536,7 +474,7 @@ def parse_options():
     options = parser.parse_args()
     if not 1 <= options.photos <= 20:
         parser.error("photos must be 1-20")
-    for name in ("warmup", "run_seconds", "camera_timeout", "first_delay", "photo_interval", "ignore_seconds"):
+    for name in ("warmup", "run_seconds", "camera_timeout", "first_delay", "ignore_seconds"):
         value = getattr(options, name)
         if not math.isfinite(value) or value < 0:
             parser.error(f"{name} must be finite and nonnegative")

@@ -117,7 +117,7 @@ Measured on 2026-10-17 after fitting a 2200 µF capacitor at the servo, over 9 v
 
 ## 🎯 Threshold from the dashboard
 
-Under 🔍 Last checks (both modes): a slider for the recognition threshold (0.30–0.99) with a live preview from the logged visits: a scale with every visit's best score (green = was YES, grey = was NO, outlined = would flip), how many YES would become NO (an estimate: a YES stopped at the first photo above the old threshold) and how many NO would become YES (exact: a NO analysed all five photos), and what the last visit would have been. **Save** writes `config/local.accept.json`; the detector reads it at the start of every visit (no restart), and each visit record keeps the threshold it used. Without the file, `--accept` from the service applies.
+Under 🔍 Last checks (both modes): a slider for the recognition threshold (0.30–0.99) with a live preview from the logged visits: a scale with every visit's best score (green = was YES, grey = was NO, outlined = would flip), how many YES would become NO (an estimate: a YES stopped at the first photo above the old threshold) and how many NO would become YES (exact: a NO analysed all of its photos), and what the last visit would have been. **Save** writes `config/local.accept.json`; the detector reads it at the start of every visit (no restart), and each visit record keeps the threshold it used. Without the file, `--accept` from the service applies.
 
 Works from the internet too (behind the password), like every control except Power off (see "Who may do what").
 

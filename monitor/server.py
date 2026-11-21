@@ -418,6 +418,8 @@ class Handler(BaseHTTPRequestHandler):
             if url.path == "/api/errors":
                 return self.send(200, json.dumps(errors()).encode())
             return self.fail(404, "not found")
+        except (BrokenPipeError, ConnectionResetError):
+            return  # the browser went away; nothing to answer
         except (OSError, ValueError) as error:
             return self.fail(500, type(error).__name__)
 

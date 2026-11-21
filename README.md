@@ -43,13 +43,13 @@ A crow drops an object into a small intake. A camera looks at it, an on-device v
       │                        │
       ▼                        ▼
  ┌─────────────────────────────────────────────────────────────┐
- │ 1 s pause → light on → up to 5 photos, 1 s apart            │
- │ each photo is analysed in the background as soon as taken   │
+ │ 1 s pause → light on → up to 3 photos, one after the other  │
+ │ each photo is analysed before the next one is taken         │
  └─────────────────────────────────────────────────────────────┘
       │ any photo scores ≥ 0.6 as "cap or lid"?
       ├── YES (stop at once) ──► servo 85° counter-clockwise:
       │                          tray into waste + food reward
-      └── NO  (after 5 photos) ► servo 85° clockwise:
+      └── NO  (after 3 photos) ► servo 85° clockwise:
                                  tray into waste, no reward
       │
       ▼  servo holds 0.5 s, returns to the centre
@@ -57,9 +57,9 @@ A crow drops an object into a small intake. A camera looks at it, an on-device v
 ```
 
 1. **Wake-up.** A passive-infrared (PIR) sensor aimed at the intake opening detects the crow's head. A PIR reacts only to warm moving bodies, so the camera, not the PIR, decides what was deposited.
-2. **Photos.** After a 1 s pause (the crow needs a moment to let go), the box's own light switches on and the camera takes up to five photos, one per second.
-3. **Pipelined recognition.** Each photo is analysed in a background thread while the next is being taken. Only the unit's fixed tray area is analysed.
-4. **Decision.** The first photo scoring at least **0.6** for "cap or lid" ends the sequence with **YES**. If none of the five does, the answer is **NO**.
+2. **Photos.** After a 1 s pause (the crow needs a moment to let go), the box's own light switches on and the camera takes up to three photos, one after the other.
+3. **Recognition.** Each photo is analysed before the next one is taken, so camera and CPU load never coincide. Only the unit's fixed tray area is analysed.
+4. **Decision.** The first photo scoring at least **0.6** for "cap or lid" ends the sequence with **YES**. If none of the three does, the answer is **NO**.
 5. **Action.** The servo turns 85° to the reward side (YES) or the dump side (NO), holds 0.5 s, and returns to the centre, where it holds the tray until the next visit.
 6. **Record.** Every visit is logged with all photo scores, the decision, the timing and the servo stroke; the photos are kept up to a size limit.
 
@@ -87,7 +87,7 @@ Measured **on the Raspberry Pi 3**:
 |---|---|
 | Decision, object visible in the first photo | **≈ 2.6 s** after the trigger |
 | Decision, object appears in the third photo | ≈ 5 s (measured before the 3-core setting; likely a little faster now) |
-| Decision NO (all five photos analysed) | **≈ 6.5 s** |
+| Decision NO (all three photos analysed) | ≈ 6–7 s *(estimate after the change of 21 Nov; was 8–9.5 s with five photos)* |
 | Analysis per photo | ≈ 0.95 s in real visits (3 CPU cores; 4 cores made the supply sag and the Pi slow its CPU) |
 | Model start-up | about 1.5 s, once; the model then stays in memory |
 | Servo stroke | 0.31–0.34 s per 85° movement; with the 0.5 s hold about 1.2 s |
@@ -280,7 +280,7 @@ crown-crows/
 
 - Recognition has been tested on one bench session, not a large held-out dataset; scores are not calibrated probabilities. The threshold is confirmed on the grey tray next.
 - The model does not tell a drink cap from a larger lid; the intake slot limits the size instead.
-- "Any one of five photos" gives more chances, so an object that briefly looks like a cap can earn a reward; an accepted trade-off.
+- "Any one of three photos" gives more chances, so an object that briefly looks like a cap can earn a reward; an accepted trade-off.
 - The light is a weak, bluish RGB module; the camera compensates with a long exposure and some gain ([LIGHTING](docs/LIGHTING.md)).
 - The servo is powered from the Pi, which reported undervoltage; it needs its own supply ([POWER](docs/POWER.md)).
 - No housing or food dispenser yet; the reference design is in [MECHANICS](docs/MECHANICS.md).

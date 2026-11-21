@@ -94,6 +94,21 @@ The mistakes left are mostly round or cylindrical objects seen end-on (a nail-po
 2. **A height limit at the intake** (mechanical, free): a slot about 25 mm high lets crown caps (6 mm), plastic caps and lids through and keeps out upright bottles and tall containers, the largest group of false YES.
 3. **A small classifier on the box's own photos** (training, postponed by the owner): worth trying only with weeks of real crow data, many different objects and a held-out test of unseen objects; with the dozen objects of the bench it would learn those objects, not "cap".
 
+## How many photos per visit? (2026-11-21)
+
+The same 167 labelled visits (99 with a cap, 68 without; 520 photos, MobileCLIP2-S0 on the setup computer, tray area as in production), the decision rule "any of the first N photos at or above the threshold":
+
+| Photos N | Area under the curve | Caps accepted at 0.85 | Others accepted at 0.85 |
+|---|---|---|---|
+| 1 | 0.935 | 85 % | 19 % |
+| 2 | 0.936 | 88 % | 21 % |
+| **3** | **0.937** | **89 %** | **21 %** |
+| 5 | 0.937 | 89 % | 21 % |
+
+Photos 4 and 5 never changed a decision (of the cap visits that were accepted at all, 84 were accepted on photo 1, 3 on photo 2, 1 on photo 3), so the box takes **3 photos**: the same accuracy, a rejected visit about 3 s shorter and 40 % less recognition work on every NO. Preprocessing with one resize instead of two (to save time) was slightly worse (0.930) and stretching the tray to a square no better (0.935), so the production preprocessing stays.
+
+**Mixed scenes.** On 21 Nov a cap lying next to a plastic lighter was rejected twice (0.005 and 0.11) while the same cap alone scored 0.97–0.99: the model judges the whole picture, and the "lighter" description takes the vote. Real visits will rarely contain two objects; left as it is (no extra checks, owner's rule).
+
 ## Does the colour cast matter? (2026-11-20)
 
 Test of a white-balance correction before recognition: on the 167 labelled visits (99 with a cap, 68 without; 220 photos, cap visits judged on photo 1, the others on photos 1 and 3) every photo was recognised twice, as it is and with the colour cast of the tray neutralised (the tray's median red and blue scaled to its median green; for 215 of the 220 photos this moved the colours by more than 6 %, mostly the blue of the bench lamp). Same ONNX model, run on the setup computer.

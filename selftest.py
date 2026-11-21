@@ -27,12 +27,12 @@ def block_network():
 
 # Stored tray photos and the decision the visit logic must reach for them.
 SCENARIOS = [
-    ("crown cap in photo 1", ["crown-cap"] * 5, "YES"),
-    ("plastic cap arrives in photo 3", ["empty", "empty", "plastic-cap", "plastic-cap", "plastic-cap"], "YES"),
-    ("light-blue cap", ["blue-cap"] * 5, "YES"),
-    ("empty tray", ["empty"] * 5, "NO"),
-    ("piece of paper", ["paper"] * 5, "NO"),
-    ("feather", ["feather"] * 5, "NO"),
+    ("crown cap in photo 1", ["crown-cap"] * 3, "YES"),
+    ("plastic cap arrives in photo 3", ["empty", "empty", "plastic-cap"], "YES"),
+    ("light-blue cap", ["blue-cap"] * 3, "YES"),
+    ("empty tray", ["empty"] * 3, "NO"),
+    ("piece of paper", ["paper"] * 3, "NO"),
+    ("feather", ["feather"] * 3, "NO"),
 ]
 # Unedited tray photos from the bench unit (grey card, 2026-10-15), kept in
 # selftest-photos/ so the test works on any Pi; tray.json holds the tray area
@@ -102,11 +102,11 @@ def main():
                            check=True, timeout=20)
             timings.append(time.monotonic() - began)
             path = options.root / PHOTOS[sequence[index - 1]]
-            return images[sequence[index - 1]], path
+            return images[sequence[index - 1]], path, None
 
-        settings = SimpleNamespace(accept=options.accept, photos=5, first_delay=1.0, photo_interval=1.0,
+        settings = SimpleNamespace(accept=options.accept, accept_file=Path("/nonexistent"), photos=3, first_delay=1.0,
                                    output=Path(tempfile.mkdtemp()), keep_batches=1000, model_sha256="selftest",
-                                   tray=tray, dump_seconds=.5)
+                                   tray=tray, dump_seconds=.5, servo_idle="hold")
 
         def classify(frame):
             result = recognise(detect.tray_rgb(frame, tray, cv2))

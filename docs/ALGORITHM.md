@@ -2,10 +2,10 @@
 
 ## One visit
 
-1. **PIR trigger.** The motion sensor fires when a warm body (a crow's head, a hand) moves in front of the intake. Further triggers are ignored for `--ignore-seconds` (25 s: 1 s pause + 5–7 s analysis + about 10 s for the crow to take the food and leave, rounded up).
-2. **Photos.** Wait `--first-delay` (1 s) so the object has landed, switch the light on, then take up to `--photos` (5) photos `--photo-interval` (1 s) apart. The light goes off after the last photo, or as soon as the decision is YES.
-3. **Recognition.** Each photo is analysed in a background thread as soon as it is taken (pipelined: the next photo is taken while the previous one is analysed). Only the unit's fixed tray area is analysed ([RECOGNITION](RECOGNITION.md)); its `cap_score` is the model's probability that the picture shows a bottle cap.
-4. **Decision.** **YES** as soon as any photo reaches the threshold (`--accept` 0.6, or the value set in the dashboard, `config/local.accept.json`, read at the start of each visit): no further photos, reward stroke (`dump_reward`, counter-clockwise). **NO** if none of the five does: dump-only stroke (`dump_only`, clockwise). Either way the servo holds the end position for `--dump-seconds` (0.5 s) and returns straight to the centre, where it holds the tray until the next visit.
+1. **PIR trigger.** The motion sensor fires when a warm body (a crow's head, a hand) moves in front of the intake. Further triggers are ignored for `--ignore-seconds` (25 s: 1 s pause + 4–7 s photos and analysis + about 10 s for the crow to take the food and leave, rounded up).
+2. **Photos.** Wait `--first-delay` (1 s) so the object has landed, switch the light on, then take up to `--photos` (3) photos, one after the other. The light stays on until the decision.
+3. **Recognition.** Each photo is analysed before the next one is taken (no background thread: the camera and the recognition never compete for the Pi's CPU and supply). Only the unit's fixed tray area is analysed ([RECOGNITION](RECOGNITION.md)); its `cap_score` is the model's probability that the picture shows a bottle cap.
+4. **Decision.** **YES** as soon as any photo reaches the threshold (`--accept` 0.6, or the value set in the dashboard, `config/local.accept.json`, read at the start of each visit): no further photos, reward stroke (`dump_reward`, counter-clockwise). **NO** if none of the three does: dump-only stroke (`dump_only`, clockwise). Either way the servo holds the end position for `--dump-seconds` (0.5 s) and returns straight to the centre, where it holds the tray until the next visit.
 5. **Record.** Each visit's photos are kept in `captures/<boot>-<sequence>-<pid>/` (the oldest are deleted beyond 1000 visits), and one line in `logs/detect.jsonl` records every photo's score and top label, the decision, the time from trigger to decision and the stroke.
 
 At start-up the servo moves to the centre, the light measures the exposure once (the photos are then taken immediately, with a fixed exposure that is corrected after each photo, see "Exposure control"), and one photo of the empty tray is saved as `captures/<boot>-0000-<pid>/` so the aim and the tray area can be checked after every start. After a 60 s PIR warm-up the light flashes green three times: ready.
@@ -16,13 +16,13 @@ At start-up the servo moves to the centre, the light measures the exposure once 
 |---|---|
 | A PIR does not detect cold objects: six objects tossed into the intake gave zero PIR pulses; a hand always triggers it | The PIR only wakes the system; the camera decides what arrived |
 | A photo taken at the trigger can show the object mid-fall | First photo 1 s after the trigger, then more photos: any one of them may decide |
-| The model loads in about 1.5 s and stays in memory; one analysis takes about 0.95 s on the Pi 3 (3 threads), one photo 0.45–0.7 s | Pipelined photos and analysis: a YES in about 2.6 s (later if the object appears in a later photo), a NO after about 6.5 s |
+| The model loads in about 1.5 s and stays in memory; one analysis takes about 0.95 s on the Pi 3 (3 threads), one photo 0.45–0.7 s | Photo, then analysis, one after the other: a YES in about 2.6 s (later if the object appears in a later photo), a NO after about 6–7 s *(estimate, to be measured after the change of 2026-11-21)* |
 | Room light reaching the tray changed scores drastically | The intake must be dark; the box's own light is the only light |
 | The model judges the whole picture, not objects inside it: whole photos with walls and other objects in view scored a clearly visible object at 0.02, a crop of the tray at 0.99 | Analyse only the tray area, fixed per unit ([DEPLOY](DEPLOY.md)) |
 | Seen from above, a round floor inside a round tube looks like a cap: empty trays scored up to 0.99 as "bottle cap" | Square or rectangular, plain grey tray; no round shapes in the analysed area ([MECHANICS](MECHANICS.md)) |
 | Searching for a round floor in every photo failed on other trays and would lock onto a cap itself | No searching: a fixed tray area per unit |
 
-**Accepted risk:** "any one of five photos" gives more chances, so an object that only briefly looks like a cap can earn a reward. Long-term reliable operation is preferred over avoiding every occasional error. Objects that are not caps but are rewarded anyway (coins, washers, buttons) are not a problem for now.
+**Accepted risk:** "any one of three photos" gives more chances, so an object that only briefly looks like a cap can earn a reward. Long-term reliable operation is preferred over avoiding every occasional error. Objects that are not caps but are rewarded anyway (coins, washers, buttons) are not a problem for now.
 
 ## Timing
 
@@ -31,15 +31,15 @@ At start-up the servo moves to the centre, the light measures the exposure once 
 | Trigger → first photo | 1 s |
 | Photo (set exposure, `--immediate`) | 0.45–0.7 s; measuring the tray's brightness afterwards 2–3 ms |
 | Analysis of one photo | about 0.95 s (3 threads, in real visits) |
-| YES on photo 1 / photo 3 | about 2.6 s / up to 5 s after the trigger |
-| NO (all five photos) | about 6.5 s after the trigger |
+| YES on photo 1 / photo 3 | about 2.6 s / about 6 s after the trigger *(photo 3 estimated)* |
+| NO (all three photos) | about 6–7 s after the trigger *(estimated; was about 8–9.5 s with five photos on 20 Nov)* |
 | Servo stroke out, 0.5 s hold, back | about 1.2 s |
 
 ## Exposure control (2026-11-20)
 
 The exposure is metered once at start-up, in the dark with the box's light on (60 ms, gain about 5.4), and a fresh auto-exposure per photo would cost seconds. In daylight that fixed setting blew the pictures out: the visits of a sunny morning had a median tray grey level of 220–240 (of 255) and up to 80 % of the tray's pixels fully white, against about 70 in the evening, and a picture that clipped cannot be repaired afterwards.
 
-**Rule.** After every photo the grey level of the tray area is measured on every 8th pixel (median and share of white pixels, 2–3 ms). Inside 45–140 the exposure stays; otherwise the exposure for the next photo is corrected: from a clipped picture (over 20 % white) 6 times shorter, over 50 % white 16 times shorter, else by the (gamma 2.2) distance to a target grey level of 90, at most 8 times darker, 4 times brighter (16 times for a nearly black picture) per step. The gain stays at 1 while the shutter (100 µs to 60 ms) can do the job, to keep the noise low; the white balance gains stay as metered. The correction carries over to the next visit, so a steady light is right from the first photo; after a change the next one or two photos are corrected (a very bright sun: three). The evening exposure is not touched. `--fixed-exposure` switches the correction off.
+**Rule.** After every photo the grey level of the tray area is measured on every 8th pixel (median and share of white pixels, 2–3 ms). Inside 45–140 the exposure stays; otherwise the exposure for the next photo is corrected: from a clipped picture (over 20 % white) 6 times shorter, over 50 % white 16 times shorter, else by the (gamma 2.2) distance to a target grey level of 90, at most 8 times darker, 4 times brighter (16 times for a nearly black picture) per step. The gain stays at 1 while the shutter (100 µs to 60 ms) can do the job, to keep the noise low; the white balance gains stay as metered. The correction carries over to the next visit, so a steady light is right from the first photo; after a change the next one or two photos are corrected (a very bright sun: three). The evening exposure is not touched.
 
 Simulated: ordinary sun in 2 photos, very bright sun in 3, a return to the dark in 3. Checked on the real camera in the dark: the loop leaves the evening setting alone and climbs from a nearly black start. Checked under a strong extra lamp (2026-11-20, six live photos in a row): the first photo with the night setting was blown out (grey level 254, 58 % white pixels); one correction (60 ms, gain 5.4 → 20 ms, gain 1.0) brought the tray to grey 71 with 0.1 % white, and the next four photos stayed there. Back in the dark (lamp off) the first photo came out almost black (grey level 2, exposure still 20 ms), the next two photos corrected it in two steps (60 ms with gain 5.4, then gain 8, the limit) to grey 44, where it stayed: the loop sits at its maximum when the light is that dim. Real sun has still to be checked.
 
