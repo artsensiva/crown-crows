@@ -48,6 +48,8 @@ LOCK_FILE = ROOT / "config/local.monitor-lock.json"
 ACCEPT_FILE = ROOT / "config/local.accept.json"
 PAUSE_FILE = ROOT / "config/local.pause.json"
 FOOD_FILE = ROOT / "config/local.food.json"
+VERDICTS_FILE = ROOT / "config/local.verdicts.json"  # the owner's "decision right/wrong" marks per visit, by batch name
+MAX_VERDICTS = 5000
 # Live photo: the server only writes the request file; the detector takes the photo (same names as in detect.py).
 SNAPSHOT_REQUEST = Path("/dev/shm/crown-crows-snapshot-request")
 SNAPSHOT_IMAGE = Path("/dev/shm/crown-crows-snapshot.jpg")
@@ -290,7 +292,7 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         self.server.last_request = time.monotonic()
         path = urlparse(self.path).path
-        if path not in ("/api/login", "/api/accept", "/api/pause", "/api/food", "/api/snapshot", *ACTIONS):
+        if path not in ("/api/login", "/api/accept", "/api/pause", "/api/food", "/api/snapshot", "/api/verdict", *ACTIONS):
             return self.fail(404, "not found")
         length = int(self.headers.get("Content-Length") or 0)
         if not 0 < length <= 1024:
@@ -310,9 +312,19 @@ class Handler(BaseHTTPRequestHandler):
             temporary.write_text(json.dumps({"accept": round(float(value), 2), "set_at": time.time()}) + "\n")
             temporary.replace(ACCEPT_FILE)  # atomic: the detector never reads half a file
             return self.send(200, json.dumps({"accept": round(float(value), 2)}).encode())
-        if path in ("/api/pause", "/api/food", "/api/snapshot"):
+        if path in ("/api/pause", "/api/food", "/api/snapshot", "/api/verdict"):
             if not self.server.token or not hmac.compare_digest(self.headers.get("X-Token", ""), self.server.token):
                 return self.fail(401, "token required")
+            if path == "/api/verdict":
+                batch, verdict = body.get("batch"), body.get("verdict")
+                if not isinstance(batch, str) or not BATCH.match(batch) or verdict not in ("right", "wrong", None):
+                    return self.fail(400, "batch must be a visit name and verdict right, wrong or null")
+                verdicts = read_json(VERDICTS_FILE) or {}
+                verdicts.pop(batch, None)
+                if verdict:
+                    verdicts[batch] = verdict
+                write_json(VERDICTS_FILE, dict(list(verdicts.items())[-MAX_VERDICTS:]))
+                return self.send(200, json.dumps({"batch": batch, "verdict": verdict}).encode())
             if path == "/api/snapshot":
                 SNAPSHOT_REQUEST.touch()  # the detector handles it between visits, usually within a second
                 return self.send(202, json.dumps({"requested": True}).encode())
@@ -415,6 +427,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send(200, SNAPSHOT_IMAGE.read_bytes(), "image/jpeg")
             if url.path == "/api/snapshot-info":
                 return self.send(200, SNAPSHOT_INFO.read_bytes() if SNAPSHOT_INFO.is_file() else b"{}")
+            if url.path == "/api/verdicts":
+                return self.send(200, json.dumps(read_json(VERDICTS_FILE) or {}).encode())
             if url.path == "/api/errors":
                 return self.send(200, json.dumps(errors()).encode())
             return self.fail(404, "not found")

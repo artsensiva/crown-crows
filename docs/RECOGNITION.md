@@ -92,7 +92,7 @@ The mistakes left are mostly round or cylindrical objects seen end-on (a nail-po
 
 1. **Exposure and focus** (done for exposure, see [ALGORITHM](ALGORITHM.md#exposure-control-2026-11-20); focus at the prototype): a clipped or soft picture cannot be recognised well, and real daylight is where this matters most.
 2. **A height limit at the intake** (mechanical, free): a slot about 25 mm high lets crown caps (6 mm), plastic caps and lids through and keeps out upright bottles and tall containers, the largest group of false YES.
-3. **A small classifier on the box's own photos** (training, postponed by the owner): worth trying only with weeks of real crow data, many different objects and a held-out test of unseen objects; with the dozen objects of the bench it would learn those objects, not "cap".
+3. **A small classifier on the box's own photos** (training, postponed by the owner; since 2026-11-21 the dashboard's ✔/✘ marks collect the labels, see [MONITOR](MONITOR.md#marking-decisions-right-or-wrong-2026-11-21)): worth trying only with weeks of real crow data, many different objects and a held-out test of unseen objects; with the dozen objects of the bench it would learn those objects, not "cap".
 
 ## How many photos per visit? (2026-11-21)
 

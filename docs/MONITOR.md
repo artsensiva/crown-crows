@@ -155,3 +155,7 @@ A card under the threshold (both modes):
 ![Short power dips are notes, not faults](images/dashboard-health.jpg)
 
 *Crow mode's health card on the bench box on 2026-11-20: the box works, and the three power notes (low at this moment, dips while photographing, dips on servo moves) are shown in grey and green, not as faults.*
+
+## Marking decisions right or wrong (2026-11-21)
+
+Each of the latest checks has `right? ✔ ✘` under its photos: ✔ when the box's decision (YES or NO) was right, ✘ when it was wrong; the same mark again clears it. The marks are stored on the Pi in `config/local.verdicts.json` (batch name → `right` or `wrong`, at most 5000, not in Git) and change nothing in the box's behaviour. They build a labelled set of real visits at the cost of one click: the truth of a visit follows from decision and mark (YES and right, or NO and wrong, means a cap was there; YES and wrong, or NO and right, means no cap). Use it to check the threshold with real data, and, with the photos kept in `captures/` and the records in `logs/detect.jsonl`, as the training and test set of a classifier trained on the box's own photos ([RECOGNITION](RECOGNITION.md)). The Pi deletes photos beyond 1000 visits, so copy `config/local.verdicts.json`, `logs/detect.jsonl` and `captures/` to the setup computer now and then, as was done for `~/crown-crows-data/`. Marking works from the internet too (with the password); the header of the checks shows how many are marked.

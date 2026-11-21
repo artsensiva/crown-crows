@@ -54,6 +54,9 @@
   .check .shots { margin-top: 5px; display: flex; flex-wrap: wrap; gap: 4px; align-items: center; color: var(--soft); font-size: 12px; }
   .check .shots button { min-width: 26px; padding: 2px 6px; border: 1px solid var(--line); border-radius: 6px; background: transparent; color: var(--info); font-size: 12px; cursor: pointer; }
   .check .shots button.on { border-color: var(--info); font-weight: 700; }
+  .check .vote { margin-top: 5px; display: flex; flex-wrap: wrap; gap: 4px; align-items: center; color: var(--soft); font-size: 12px; }
+  .check .vote button { padding: 2px 7px; border: 1px solid var(--line); border-radius: 6px; background: transparent; color: var(--soft); font-size: 12px; cursor: pointer; }
+  .check .vote button.right.on { border-color: var(--ok); color: var(--ok); font-weight: 700; } .check .vote button.wrong.on { border-color: var(--bad); color: var(--bad); font-weight: 700; }
   .check.fresh { animation: fresh 2.5s ease-out; }
   @keyframes fresh { 0%, 30% { box-shadow: 0 0 0 4px var(--info); } 100% { box-shadow: 0 0 0 4px transparent; } }
   .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
@@ -231,7 +234,7 @@
 </section>
 
 <section class="checks" aria-label="Last checks">
-  <div class="checks-head"><b>🔍 Last checks</b> <small style="color:var(--soft)">the 12 latest visits · thumbnail = best photo · numbers = all photos</small><a href="#visits" class="more-link" data-goto="visits">all visits →</a></div>
+  <div class="checks-head"><b>🔍 Last checks</b> <small style="color:var(--soft)">the 12 latest visits · thumbnail = best photo · numbers = all photos · <span id="verdictCount"></span></small><a href="#visits" class="more-link" data-goto="visits">all visits →</a></div>
   <div class="check-row" id="checks"><div class="check empty">Waiting for the first check…</div></div>
 </section>
 
@@ -926,7 +929,11 @@ setInterval(() => { if (!document.hidden) safely(renderArm); }, 1000);
 
 // Last checks: the newest visits with a thumbnail of the photo that scored highest, cropped to the tray.
 const thumbs = new Map();  // "batch/file" -> data URL, "" while loading, null if the photo is gone
-let lastChecksKey = "", newestCheck = null;
+let lastChecksKey = "", newestCheck = null, verdicts = {};  // verdicts: batch -> "right" | "wrong", the owner's marks (config/local.verdicts.json)
+async function loadVerdicts() {
+  try { verdicts = await (await api("/api/verdicts")).json(); } catch (error) { return; }
+  lastChecksKey = ""; safely(renderChecks);
+}
 async function loadThumb(batch, file, tray) {
   const key = `${batch}/${file}`;
   if (thumbs.has(key)) return;
@@ -987,7 +994,9 @@ function checkDetails(r, previous) {
 function renderChecks() {
   const all = logs.detect.rows.filter((r) => r.decision), rows = all.slice(-12).reverse();
   if (!rows.length) return;
-  const key = rows.map((r) => r.batch).join() + [...thumbs.values()].filter((v) => v).length + Math.floor(Date.now() / 30000) + logs.servo.rows.length + document.body.classList.contains("nerd");
+  const marks = Object.values(verdicts), count = $("verdictCount");
+  if (count) count.textContent = marks.length ? `marked: ${marks.filter((v) => v === "right").length} right, ${marks.filter((v) => v === "wrong").length} wrong` : "mark each decision right or wrong to build a labelled set";
+  const key = rows.map((r) => r.batch).join() + JSON.stringify(verdicts) + [...thumbs.values()].filter((v) => v).length + Math.floor(Date.now() / 30000) + logs.servo.rows.length + document.body.classList.contains("nerd");
   if (key === lastChecksKey) return; lastChecksKey = key;
   const fresh = newestCheck !== null && rows[0].batch !== newestCheck; newestCheck = rows[0].batch;
   $("checks").innerHTML = rows.map((r, i) => {
@@ -1007,7 +1016,10 @@ function renderChecks() {
       `<div class="shots">📷 ${Array.from({ length: r.photos_taken || 0 }, (_, k) => {
         const n = k + 1, f = `image-${String(n).padStart(2, "0")}.jpg`, s = (r.photos || []).find((x) => x.photo === n);
         return `<button class="${f === file ? "on" : ""}" data-batch="${escapeHtml(r.batch)}" data-file="${f}" title="${s ? `photo ${n}: ${escapeHtml(s.top_label)}, cap ${s.cap_score.toFixed(2)}` : `photo ${n}: not analysed (decision already made)`}">${n}${s ? "" : "·"}</button>`;
-      }).join("") || "none"}</div>${checkDetails(r, all[all.length - 2 - i])}</div>`;
+      }).join("") || "none"}</div>` +
+      `<div class="vote" title="Was the box's decision right? Your marks build a labelled set of real visits">right?` +
+      ["right", "wrong"].map((v) => `<button class="${v}${verdicts[r.batch] === v ? " on" : ""}" data-vbatch="${escapeHtml(r.batch)}" data-verdict="${v}" title="${v === "right" ? "Yes, right" : "No, wrong"}" aria-label="${v === "right" ? "Decision right" : "Decision wrong"}">${v === "right" ? "✔" : "✘"}</button>`).join("") + `</div>` +
+      `${checkDetails(r, all[all.length - 2 - i])}</div>`;
   }).join("");
 }
 document.querySelector(".checks").addEventListener("toggle", (event) => {
@@ -1018,6 +1030,13 @@ document.querySelector(".checks").addEventListener("toggle", (event) => {
 document.querySelector(".checks").addEventListener("click", async (event) => {
   const link = event.target.closest("a[data-goto]");
   if (link) { event.preventDefault(); return goTo(link.dataset.goto); }
+  const vote = event.target.closest("button[data-vbatch]");
+  if (vote) {  // mark the decision right or wrong; the same mark again clears it
+    const batch = vote.dataset.vbatch, verdict = verdicts[batch] === vote.dataset.verdict ? null : vote.dataset.verdict;
+    try { await post("/api/verdict", { batch, verdict }); if (verdict) verdicts[batch] = verdict; else delete verdicts[batch]; lastChecksKey = ""; renderChecks(); }
+    catch (error) { alert("Could not save the mark: " + error.message); }
+    return;
+  }
   const button = event.target.closest("button[data-batch]"); if (!button) return;
   try {
     const blob = await (await api(`/api/photo?batch=${encodeURIComponent(button.dataset.batch)}&file=${encodeURIComponent(button.dataset.file)}`)).blob();
@@ -1262,7 +1281,7 @@ setInterval(() => {  // local clock only: shows how old the live data is; no req
 setIcon(null);
 $("logo").src = $("loginLogo").src = capIcon(null);  // the same crowned crow as the tab icon, without the status dot
 renderNow();
-if (token) { refresh(true).then(schedule); pollNow(); }
+if (token) { refresh(true).then(schedule); pollNow(); loadVerdicts(); }
 else showLogin();
 </script>
 </body>
