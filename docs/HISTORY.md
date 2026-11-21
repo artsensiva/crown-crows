@@ -172,3 +172,5 @@ On the headless box `deploy/trim-system.sh` switched off Bluetooth (service now,
 ## Servo module trimmed, HDMI and audio off (2026-11-21)
 
 `servo_bench.py` went from 351 to 305 lines: the shake option of the dump stroke (never used, `shake_count` was always 0), the `--dump-test` bench command and the extra servo-log line written after every visit (the dashboard reads only the lines of single moves) were removed. Checked on the setup computer with a simulated PWM: strokes, return home and a stop in the middle of a stroke behave as before. Kept on purpose: the power-flag reading after every ramp step, because the dashboard's "dip began during the stroke" note depends on it. HDMI (`nohdmi`) and audio were added to `deploy/trim-system.sh` at the owner's decision (no screen or speaker on the box; an estimated 0.1–0.15 W).
+
+Applied on the Pi the same night after a reboot: boot in about a minute, detector and dashboard running, servo at home, start-up photo recognised as a cap (0.95), no Bluetooth timeouts in the journal any more, no HDMI connector in `/sys/class/drm`. The first visits with the trimmed servo module are still to be watched.
