@@ -10,7 +10,7 @@ A crow drops an object into a small intake. A camera looks at it, an on-device v
 
 > **Status (October 2026): bench prototype.** The detection loop, recognition, servo strokes, installer and self-test run on the Pi. Recognition of caps and lids was tuned on a grey tray (service default 0.6; the box runs at 0.85, set from the dashboard, at most three photos per visit) and checked on 167 labelled bench visits; the camera adapts its exposure to daylight; a monitoring dashboard runs on the local network and, optionally, from the internet. The mechanical housing, the food dispenser and outdoor trials are the next steps ([ROADMAP](docs/ROADMAP.md)).
 
-![The monitoring dashboard in Crow mode: what the box is doing, today's caps and snacks, the last guest, the three latest checks with photos and the recognition threshold](docs/images/dashboard-crow.jpg)
+![The monitoring dashboard in Crow mode: what the box is doing, today's caps and snacks, the last guest, the latest checks with photos (three then, twelve since 21 Nov) and the recognition threshold](docs/images/dashboard-crow.jpg)
 
 *The monitoring dashboard on the bench box ([MONITOR](docs/MONITOR.md)): live state, today's figures, the last three checks with their photos and the recognition threshold.*
 

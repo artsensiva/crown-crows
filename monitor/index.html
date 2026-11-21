@@ -34,10 +34,10 @@
   .scale i.y { background: var(--ok); } .scale i.n { background: var(--soft); } .scale i.flip { outline: 2px solid var(--warn); }
   .scale b { position: absolute; top: -3px; bottom: -3px; width: 3px; margin-left: -1px; background: var(--ink); border-radius: 2px; }
   .checks-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
-  .check-row { display: flex; gap: 10px; overflow-x: auto; padding: 2px 2px 8px; scroll-snap-type: x proximity; }
-  .check { flex: 1 1 0; min-width: 170px; max-width: 300px; scroll-snap-align: start; border: 2px solid var(--line); border-radius: 14px; padding: 8px;
+  .check-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; padding: 2px 2px 8px; }
+  .check { border: 2px solid var(--line); border-radius: 14px; padding: 8px;
            background: color-mix(in srgb, var(--bg) 70%, transparent); font-size: 13px; }
-  .check.yes { border-color: var(--ok); } .check.no { border-color: var(--line); } .check.empty { flex-basis: auto; color: var(--soft); }
+  .check.yes { border-color: var(--ok); } .check.no { border-color: var(--line); } .check.empty { grid-column: 1 / -1; color: var(--soft); }
   .check .thumb { display: block; width: 100%; aspect-ratio: 4 / 3; border-radius: 9px; background: var(--line) center / cover no-repeat;
                   border: 0; padding: 0; cursor: zoom-in; color: var(--soft); font-size: 12px; }
   .check .verdict { display: flex; justify-content: space-between; align-items: center; margin: 6px 0 2px; font-weight: 700; font-size: 14px; }
@@ -231,7 +231,7 @@
 </section>
 
 <section class="checks" aria-label="Last checks">
-  <div class="checks-head"><b>🔍 Last checks</b> <small style="color:var(--soft)">the 3 latest visits · thumbnail = best photo · numbers = all photos</small><a href="#visits" class="more-link" data-goto="visits">all visits →</a></div>
+  <div class="checks-head"><b>🔍 Last checks</b> <small style="color:var(--soft)">the 12 latest visits · thumbnail = best photo · numbers = all photos</small><a href="#visits" class="more-link" data-goto="visits">all visits →</a></div>
   <div class="check-row" id="checks"><div class="check empty">Waiting for the first check…</div></div>
 </section>
 
@@ -985,7 +985,7 @@ function checkDetails(r, previous) {
     `<div>${r.reward ? "🥜 reward released" : "🚫 no reward"}</div></details>`;
 }
 function renderChecks() {
-  const all = logs.detect.rows.filter((r) => r.decision), rows = all.slice(-3).reverse();
+  const all = logs.detect.rows.filter((r) => r.decision), rows = all.slice(-12).reverse();
   if (!rows.length) return;
   const key = rows.map((r) => r.batch).join() + [...thumbs.values()].filter((v) => v).length + Math.floor(Date.now() / 30000) + logs.servo.rows.length + document.body.classList.contains("nerd");
   if (key === lastChecksKey) return; lastChecksKey = key;
