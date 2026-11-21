@@ -29,7 +29,7 @@
   - Food counter: enter the real capacity, refill, check that the number goes down with the rewards and that the note appears at 15 %.
   - Controls from the internet through the Tailscale address (threshold, Restart, Reboot, Pause, Live photo behind the password; Power off disabled there).
   - Live photo used for the new box: tray area and focus set by its outline and sharpness number.
-- [ ] **Check the adaptive exposure in real sun** (2026-11-20; under a strong lamp it worked: grey 254 → 71 after one correction): visits around midday; the dashboard shows each photo's exposure and grey level; the tray should come out near 90 instead of 220–240.
+- [x] **Check the adaptive exposure in real sun** (done 2026-11-21: the owner saw no overexposed photos in strong sun; a very bright visit came out at grey 223 with 3.5 % clipped and still scored 0.97; first photo after a sudden light jump can be off, corrected in one step). Original plan: visits around midday; the dashboard shows each photo's exposure and grey level; the tray should come out near 90 instead of 220–240.
 - [ ] **Power bank charge level:** INA226 current sensor on I2C, energy used since the last charge, estimated percentage ([POWER](POWER.md#power-bank-charge-level-in-the-dashboard-2026-11-20)); waits for the owner's choice of sensor.
 - [ ] **Intake height limit (about 25 mm)** against upright cylinders and tall objects, the largest group of false YES ([RECOGNITION](RECOGNITION.md#can-the-recognition-be-improved-2026-11-20)).
 - [ ] **Round non-cap objects** are sometimes accepted (known limit, accepted 2026-10-17). A model trained on the box's own photos would fix it if it ever matters.
