@@ -200,3 +200,7 @@ Run by the owner with `deploy/update-system.sh`: the camera stack stayed held ba
 ## Latest visits and the real-sun check (2026-11-21)
 
 Visits 18-22 reviewed with the owner. Visits 21-22 held a crown cap upside down and another behind a fork and were rejected (0.13-0.23 on the whole tray); cut out alone they score 0.99-1.00, so the miss is the mixed-scene limit, not the cap. Offline tests on the 167 labelled visits: tiling the tray 2x2 (4 passes per photo) gives 94 % of caps at 18 % others with threshold 0.95, or 85 % at 4 % with 0.99, against 86 % / 19 % now; a slightly tighter tray rectangle gives about +5 points of caps (noise level). The owner declined structural complexity and chose to leave recognition as is. The owner also confirmed that in strong sun the photos are not overexposed, so the adaptive exposure is considered proven; the roadmap item is closed.
+
+## First visits after the reboot, threshold 0.7 (2026-11-21)
+
+The reboot finished the system update (no reboot required afterwards; services up, model loaded in 5 s, servo at home and released between visits). Three visits: a cap at 0.82 was rejected at 0.85 (3 photos, 6.9 s), then the owner set the threshold to 0.7 in the dashboard and kept it; the next caps (0.77, 0.95) were accepted on photo 1 in 2.5-2.8 s. Analysis 0.92 s per photo as before.

@@ -109,7 +109,7 @@ Photos 4 and 5 never changed a decision (of the cap visits that were accepted at
 
 **Mixed scenes.** On 21 Nov a cap lying next to a plastic lighter was rejected twice (0.005 and 0.11) while the same cap alone scored 0.97–0.99: the model judges the whole picture, and the "lighter" description takes the vote. Real visits will rarely contain two objects; left as it is (no extra checks, owner's rule).
 
-**Threshold (owner's decision, 2026-11-21): 0.85 stays.** Two caps lying among other objects scored 0.83 and 0.59 and were rejected; the owner kept 0.85 (fewer false YES; a crow brings one object). Lower values accept more caps and more other objects: 0.6 took 97-98 % of caps and 29 % of others on the 167 visits, 0.85 took 89 % and 21 %, 0.95 took 79 % and 9 %. The slider in the dashboard changes it without touching the code.
+**Threshold (owner's decision, 2026-11-21): 0.85 first, then 0.7.** Later the same day, after a cap scoring 0.82 was rejected, the owner set 0.7 from the dashboard and keeps it (between the 0.6 and 0.85 figures below). Earlier decision, kept for the record: 0.85 stays. Two caps lying among other objects scored 0.83 and 0.59 and were rejected; the owner kept 0.85 (fewer false YES; a crow brings one object). Lower values accept more caps and more other objects: 0.6 took 97-98 % of caps and 29 % of others on the 167 visits, 0.85 took 89 % and 21 %, 0.95 took 79 % and 9 %. The slider in the dashboard changes it without touching the code.
 
 ## Does the colour cast matter? (2026-11-20)
 
