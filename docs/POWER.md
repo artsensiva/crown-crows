@@ -62,7 +62,7 @@ For comparison, not an addition of today: Tailscale (access from the internet) u
 |---|---|
 | The motion sensor is read directly ten times a second, without gpiozero's edge detection, whose helper thread in `lgpio` polled constantly | Detector CPU use while waiting: **5.5 % → 0.2 % of one core** |
 | The status light signals only the start-up (three green flashes when ready) and problems; it is dark in normal operation, and its thread sleeps until the next change | included above |
-| Optional: switch the servo's pulses off at the centre between visits (`--servo-idle release`) | saves the holding current, **but only usable if the tray stays at the centre without pulses**; on the first unit it drifted, causing a jump and an undervoltage at the next stroke, so the default is `hold` |
+| Optional: switch the servo's pulses off at the centre between visits (`--servo-idle release`) | saves the holding current, **but only usable if the tray stays at the centre without pulses**; on the first unit it drifted, causing a jump and an undervoltage at the next stroke, so it was `hold` until 2026-11-21; trial of `release` on the new prototype since then ([SERVO](SERVO.md)) |
 | The camera runs only during a visit (one short `rpicam-still` call per photo); exposure is measured once at start-up, then corrected from the tray's brightness (2–3 ms per photo) | camera idle otherwise |
 | The light is off except for photos and brief status blips | |
 | The model stays in memory; nothing is loaded or downloaded per visit; no network use at all | no Wi-Fi traffic needed |

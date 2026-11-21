@@ -176,3 +176,7 @@ On the headless box `deploy/trim-system.sh` switched off Bluetooth (service now,
 Applied on the Pi the same night after a reboot: boot in about a minute, detector and dashboard running, servo at home, start-up photo recognised as a cap (0.95), no Bluetooth timeouts in the journal any more, no HDMI connector in `/sys/class/drm`. The first visits with the trimmed servo module are still to be watched.
 
 First live visits after the change (21 Nov, 7 visits, one object each unless noted): all 7 servo strokes DONE, analysis per photo steady at 0.92–0.94 s (0.9–1.85 s before the change, 0.98 s on 17 Oct), YES on photo 1 in 2.47–2.53 s (5 of 5 single caps), NO after 3 photos in 5.4–5.5 s. The two NO decisions were caps lying with other objects (a crown cap, a yellow lid and a plastic lighter: best 0.83; a cap beside a pair of glasses: best 0.59), the known mixed-scene limit ([RECOGNITION](RECOGNITION.md#how-many-photos-per-visit-2026-11-21)). The kernel still reported about one "Undervoltage" per visit (8 in the first 8 minutes of this boot).
+
+## Trial: servo released between visits (2026-11-21)
+
+At the owner's decision `--servo-idle release` is on in the service file (box and repository): between visits the servo gets no pulses, which saves its holding current (an estimated 0.05–0.25 W, the largest remaining idle item). Risk from the first unit: the tray drifts without pulses and the next stroke begins with a jump. To watch: the tray at rest, the first stroke after a long pause, "Undervoltage" notes at that stroke. Back out: `--servo-idle hold`.
