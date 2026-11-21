@@ -192,3 +192,7 @@ Visits 8-12 of the boot after the bright-light test: a cap beside glasses accept
 ## Right/wrong marks in the dashboard (2026-11-21)
 
 Under every one of the 12 latest checks two buttons, ✔ and ✘, mark the box's decision as right or wrong; the marks go to `config/local.verdicts.json` through a new `POST /api/verdict` (token required, batch name validated, at most 5000 entries) and `GET /api/verdicts`. Purpose: a labelled set of real visits for checking the threshold and, later, for a classifier on the box's own photos, collected by one click instead of by-eye review sessions. About 35 lines in the server and the page; no change in the detector. Checked on the setup computer with a copy of the dashboard and real photos: a valid mark is stored, a bad batch name and a wrong token are refused, a repeated mark clears it, the buttons keep their state after a reload.
+
+## First monthly system update (2026-11-21)
+
+Run by the owner with `deploy/update-system.sh`: the camera stack stayed held back, 31 packages were upgraded, among them openssl, curl, libexpat, liblzma/xz, zlib, libnss3, ca-certificates, tzdata, apt, raspi-config, Tailscale, Wi-Fi and other firmware; no kernel, so no reboot was forced. The first visit after it (02:28) was photographed and analysed normally. Processes started before the update keep the old libraries until they restart, so a reboot at a convenient time completes it (not done yet).
