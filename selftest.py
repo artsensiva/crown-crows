@@ -69,7 +69,7 @@ def main():
     except BlockingIOError:
         raise SystemExit("The detector service holds the camera: systemctl --user stop crown-crows-detect")
     started = time.monotonic()
-    recognise = load_model(options.root / "models/mobileclip2-s0/model.onnx", 4)
+    recognise = load_model(options.root / "models/mobileclip2-s0/model.onnx", 3)
     print(f"model loaded in {time.monotonic() - started:.1f} s (stays in memory for all scenarios)")
     cv2.setNumThreads(1)
     images = {name: cv2.imread(str(options.root / path)) for name, path in PHOTOS.items()}
