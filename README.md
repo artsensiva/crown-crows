@@ -151,6 +151,24 @@ The servo on the Pi's 5 V pin was blamed for the undervoltage warnings. Lining t
 
 <img src="docs/images/dashboard-phone.jpg" alt="The dashboard on a phone" width="300">
 
+### 7. In numbers: 17 October and 21 November
+
+Code lines counted from the repository at commit `e90965e` (17 Oct) and now; timings from the box's own logs.
+
+| | 17 Oct | 21 Nov |
+|---|---|---|
+| Python, all files | 1602 lines | 1705 (+6 %) |
+| Core (`detect`, `recognition`, `lights`, `servo_bench`) | 989 | 1015 (+3 %), with adaptive exposure, pause and live photo added, and 62 + 46 lines removed on 21 Nov |
+| Dashboard (`server.py`, `index.html`) | 1516 | 1736 (+15 %) |
+| Documentation | 1623 lines | 1935 |
+| Photos per visit | 5 | at most 3 (photos 4 and 5 never changed a decision on 167 labelled visits) |
+| Analysis of one photo | 0.98 s | 0.93 s, steady (1.6 s on 20 Nov, before photo and analysis ran one after the other) |
+| YES on photo 1 | about 2.6 s | 2.5 s |
+| NO (no photo reaches the threshold) | about 6.5 s | 5.4-6.0 s (8-9.5 s on 20 Nov) |
+| Bright light | fixed exposure, blown-out photos | corrected after every photo: grey 254 (62 % white) became 97 in one step, YES on photo 2 in 3.9 s |
+| Correctness | 113 of 126 visits right (90 %) | same model; area under the curve 0.937 on 167 labelled visits |
+| Idle energy | not optimised | Bluetooth, HDMI, audio, package timers and `udisks2` off, servo released between visits: an estimated 0.2-0.4 W less (no current meter, so an estimate) |
+
 ## Hardware
 
 | Part | Role |
