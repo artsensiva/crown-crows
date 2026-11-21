@@ -87,6 +87,16 @@ bash deploy/update_pi.sh <user>@<pi>
 
 It pulls the latest version from GitHub, copies it to the Pi, installs the service file, runs the self-test and restarts the service. If `deploy/install.sh`, the runtime requirements or the model changed, run `bash deploy/install.sh` on the Pi afterwards. With a special SSH key, pass it in `SSH_OPTS`, e.g. `SSH_OPTS="-i ~/.ssh/id_ed25519" bash deploy/update_pi.sh <user>@<pi>`.
 
+
+## System updates (since 2026-11-21: by hand, once a month)
+
+The automatic package timers are switched off (`deploy/trim-system.sh`), because they started work at random times, possibly during a visit. So nothing updates the Pi by itself, and the dashboard is reachable from the internet: **once a month** (and when a security notice concerns SSH, curl, the kernel or Tailscale) run, when the box is idle:
+
+```bash
+ssh -t <user>@<pi> 'sudo bash crown-crows/deploy/update-system.sh'
+```
+
+The script holds the camera stack (`rpicam-apps`, `libcamera`) back, because recognition and exposure control were tested with it, shows what would change and asks before upgrading. Then stop the detector, run `selftest.py` (6 of 6 scenarios), start the detector and look at the dashboard; reboot if the script says a reboot is needed. Tailscale updates itself separately (`tailscale version`). On 2026-11-21 the package lists on the bench Pi dated from 17 October and 14 updates were pending even from that old list, among them curl, expat and xz.
 ## Storage needed
 
 Raspberry Pi OS Lite with the system packages about 2.7 GB, Crown Crows (environment, model, self-test photos) about 0.35 GB, visit photos capped at about 1.5 GB (1000 visits), system log capped at 50 MB: at most about 4.6 GB, so an **8 GB card is enough** (use an A1-rated card or better). On smaller cards lower `--keep-batches` in the service file.
