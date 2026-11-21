@@ -87,7 +87,7 @@ Measured **on the Raspberry Pi 3**:
 |---|---|
 | Decision, object visible in the first photo | **≈ 2.6 s** after the trigger |
 | Decision, object appears in the third photo | ≈ 5 s (measured before the 3-core setting; likely a little faster now) |
-| Decision NO (all three photos analysed) | ≈ 6–7 s *(estimate after the change of 21 Nov; was 8–9.5 s with five photos)* |
+| Decision NO (all three photos analysed) | 5.3–6.7 s (self-test of 21 Nov; was 8–9.5 s with five photos) |
 | Analysis per photo | ≈ 0.95 s in real visits (3 CPU cores; 4 cores made the supply sag and the Pi slow its CPU) |
 | Model start-up | about 1.5 s, once; the model then stays in memory |
 | Servo stroke | 0.31–0.34 s per 85° movement; with the 0.5 s hold about 1.2 s |

@@ -16,7 +16,7 @@ At start-up the servo moves to the centre, the light measures the exposure once 
 |---|---|
 | A PIR does not detect cold objects: six objects tossed into the intake gave zero PIR pulses; a hand always triggers it | The PIR only wakes the system; the camera decides what arrived |
 | A photo taken at the trigger can show the object mid-fall | First photo 1 s after the trigger, then more photos: any one of them may decide |
-| The model loads in about 1.5 s and stays in memory; one analysis takes about 0.95 s on the Pi 3 (3 threads), one photo 0.45–0.7 s | Photo, then analysis, one after the other: a YES in about 2.6 s (later if the object appears in a later photo), a NO after about 6–7 s *(estimate, to be measured after the change of 2026-11-21)* |
+| The model loads in about 1.5 s and stays in memory; one analysis takes about 0.95 s on the Pi 3 (3 threads), one photo 0.45–0.7 s | Photo, then analysis, one after the other: a YES in about 2.6 s (later if the object appears in a later photo), a NO after 5.3–6.7 s (self-test, 2026-11-21) |
 | Room light reaching the tray changed scores drastically | The intake must be dark; the box's own light is the only light |
 | The model judges the whole picture, not objects inside it: whole photos with walls and other objects in view scored a clearly visible object at 0.02, a crop of the tray at 0.99 | Analyse only the tray area, fixed per unit ([DEPLOY](DEPLOY.md)) |
 | Seen from above, a round floor inside a round tube looks like a cap: empty trays scored up to 0.99 as "bottle cap" | Square or rectangular, plain grey tray; no round shapes in the analysed area ([MECHANICS](MECHANICS.md)) |
@@ -31,8 +31,8 @@ At start-up the servo moves to the centre, the light measures the exposure once 
 | Trigger → first photo | 1 s |
 | Photo (set exposure, `--immediate`) | 0.45–0.7 s; measuring the tray's brightness afterwards 2–3 ms |
 | Analysis of one photo | about 0.95 s (3 threads, in real visits) |
-| YES on photo 1 / photo 3 | about 2.6 s / about 6 s after the trigger *(photo 3 estimated)* |
-| NO (all three photos) | about 6–7 s after the trigger *(estimated; was about 8–9.5 s with five photos on 20 Nov)* |
+| YES on photo 1 / photo 3 | about 2.4–3.4 s / 5.3 s after the trigger (self-test, 21 Nov) |
+| NO (all three photos) | 5.3–6.7 s after the trigger (self-test, 21 Nov; was 8–9.5 s with five photos in live visits on 20 Nov) |
 | Servo stroke out, 0.5 s hold, back | about 1.2 s |
 
 ## Exposure control (2026-11-20)
