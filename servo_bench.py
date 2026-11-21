@@ -148,38 +148,16 @@ class Servo:
             raise RuntimeError(f"Servo move to {name} stopped at {reached} us")
         return record
 
-    def dump(self, name, dwell=1.0, shake_count=0, shake_us=100, shake_seconds=.12, stop=None):
-        # Stroke to a dump position, optionally shake to break friction, wait
-        # for the object to fall, then return home. Shaking swings back towards
-        # home only, so it never exceeds the calibrated end position.
+    def dump(self, name, dwell, stop):
+        # Stroke to a dump position, wait for the object to fall, return home.
         self.engage()
-        strokes = []
-        warnings = 0
         try:
-            strokes.append(self.goto(name, stop))
-            target = self.calibration[name]
-            back = target + (shake_us if self.calibration["home"] > target else -shake_us)
-            for _ in range(shake_count):
-                if stop is not None and stop.is_set():
-                    break
-                for position in (back, target):
-                    self.pwm.pulse(position)
-                    time.sleep(shake_seconds)
-                    if self.check() & ACTIVE_POWER_FLAGS:
-                        warnings += 1
-            if stop is not None:
-                stop.wait(dwell)
-            else:
-                time.sleep(dwell)
+            self.goto(name, stop)
+            stop.wait(dwell)
         finally:
             # Always return to the centre, also when the service is being
             # stopped mid-stroke (about 0.3 s), so the tray is never left tilted.
-            strokes.append(self.goto("home"))
-        shake = {"count": shake_count, "us": shake_us, "seconds": shake_seconds, "power_warnings": warnings}
-        with self.log.open("a") as log:
-            log.write(json.dumps({"time_unreliable": time.time(), "source": "dump", "dump": name, "dwell": dwell,
-                                  "shake": shake}) + "\n")
-        return {"strokes": strokes, "dwell": dwell, "shake": shake}
+            self.goto("home")
 
 
 def main():
@@ -190,8 +168,6 @@ def main():
     action.add_argument("--save", choices=("home", "dump_only", "dump_reward"), help="Save the last commanded position under this name")
     action.add_argument("--status", action="store_true", help="Show state, calibration and power flags; no movement")
     action.add_argument("--release", action="store_true", help="Switch the pulses off; the servo stops holding and a loaded mechanism may fall back")
-    action.add_argument("--dump-test", choices=("dump_only", "dump_reward"),
-                        help="Stroke to a dump position, shake, wait, return home (the servo must be holding)")
     parser.add_argument("--min-us", type=int, help="Lowest allowed pulse; default: the lowest calibrated position, or 1300")
     parser.add_argument("--max-us", type=int, help="Highest allowed pulse; default: the highest calibrated position, or 1700")
     # Owner-approved speed (2026-10-14): about 2400-2900 us/s in practice,
@@ -208,10 +184,6 @@ def main():
     parser.add_argument("--calibration", type=Path, default=Path.home() / "crown-crows/config/local.servo.json")
     parser.add_argument("--log", type=Path, default=Path.home() / "crown-crows/logs/servo.jsonl")
     parser.add_argument("--no-power-check", action="store_true", help="Only for offline tests without vcgencmd")
-    parser.add_argument("--dwell", type=float, default=1.0, help="Dump test: seconds at the dump position")
-    parser.add_argument("--shake-count", type=int, default=0, help="Dump test: number of shakes")
-    parser.add_argument("--shake-us", type=int, default=100, help="Dump test: shake amplitude towards home")
-    parser.add_argument("--shake-seconds", type=float, default=.12, help="Dump test: time per half swing")
     parser.add_argument("--warn-power", action="store_true",
                         help="Log and count undervoltage instead of stopping. The Pi itself may crash or corrupt its SD card; owner's explicit risk")
     options = parser.parse_args()
@@ -240,24 +212,6 @@ def main():
         if pwm.holding() is not None:
             pwm.enable(False)
         LOG.info("Pulses off; the servo no longer holds its position")
-        return 0
-    if options.dump_test:
-        if not options.clear:
-            parser.error("Confirm with --clear that hands and objects are clear of the mechanism")
-        if not 0 <= options.shake_count <= 20 or not 20 <= options.shake_us <= 300 or not .05 <= options.shake_seconds <= .5 \
-                or not 0 <= options.dwell <= 10:
-            parser.error("shake-count 0-20, shake-us 20-300, shake-seconds 0.05-0.5, dwell 0-10")
-        if pwm.holding() is None:
-            parser.error("Pulses are off: first move to home, e.g. --move 1500 --from 1500 --clear")
-        servo = Servo(options.pwm_root, options.calibration, options.log, options.step_us, options.step_seconds,
-                      (lambda: 0) if options.no_power_check else power_flags)
-        servo.pwm.open()
-        servo.goto("home")
-        result = servo.dump(options.dump_test, options.dwell, options.shake_count, options.shake_us, options.shake_seconds)
-        state["position_us"] = servo.calibration["home"]
-        options.state.write_text(json.dumps(state) + "\n")
-        LOG.info("Dump test %s: dwell %.1f s, %d shake(s) of %d us; back home; power readings during shake: %d",
-                 options.dump_test, options.dwell, options.shake_count, options.shake_us, result["shake"]["power_warnings"])
         return 0
     if options.save:
         if "position_us" not in state:

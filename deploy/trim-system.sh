@@ -3,10 +3,11 @@
 #   - Bluetooth (service and radio): no use, and its start-up timeouts fill the journal;
 #   - the package-manager timers (apt-daily, apt-daily-upgrade, man-db, dpkg-db-backup): they start
 #     work at random times, possibly during a visit; updates are done by hand (deploy/update_pi.sh);
-#   - udisks2 (automounting of drives).
+#   - udisks2 (automounting of drives);
+#   - HDMI output and audio (no screen or speaker on the box; after the next reboot).
 # Not touched: cloud-init (it may patch the Wi-Fi settings at boot) and avahi (the name raspberrypi.local).
 # Undo: sudo systemctl enable --now <unit> for each unit below, and restore /boot/firmware/config.txt.bak-trim.
-# The Bluetooth radio is switched off at the next reboot.
+# The Bluetooth radio, HDMI and audio are switched off at the next reboot.
 set -euo pipefail
 
 if [ "$(id -u)" -ne 0 ]; then
@@ -29,6 +30,16 @@ if ! grep -q '^dtoverlay=disable-bt' "$config"; then
     echo "Bluetooth radio off after the next reboot (backup: $config.bak-trim)"
 else
     echo "Bluetooth radio already off in $config"
+fi
+if grep -q '^dtoverlay=vc4-kms-v3d$' "$config"; then
+    cp -n "$config" "$config.bak-trim"
+    sed -i 's/^dtoverlay=vc4-kms-v3d$/dtoverlay=vc4-kms-v3d,nohdmi/' "$config"
+    echo "HDMI off after the next reboot"
+fi
+if grep -q '^dtparam=audio=on' "$config"; then
+    cp -n "$config" "$config.bak-trim"
+    sed -i 's/^dtparam=audio=on/dtparam=audio=off/' "$config"
+    echo "Audio off after the next reboot"
 fi
 echo "Done. State:"
 systemctl is-enabled bluetooth.service apt-daily.timer apt-daily-upgrade.timer man-db.timer dpkg-db-backup.timer udisks2.service 2>&1 | paste -sd' '
